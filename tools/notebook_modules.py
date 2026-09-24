@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 # V4.0 is a single script cell without modules and stays as the reference.
-NOTEBOOKS = [ROOT / 'TRADING_BOT_V4_1_Cockpit.ipynb']
+NOTEBOOKS = [ROOT / 'TRADING_BOT_V4_1_Cockpit.ipynb',
+             ROOT / 'TRADING_BOT_V5_Alpaca.ipynb']
 MARKER = '%%writefile /content/'
 
 
