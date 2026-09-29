@@ -1,0 +1,46 @@
+"""Extract the %%writefile modules of a notebook, or write edited ones back.
+
+    python tools/notebook_modules.py extract <notebook> <dir>   # notebook -> <dir>/*.py
+    python tools/notebook_modules.py update <notebook> <dir>    # <dir>/*.py -> notebook
+"""
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+# V4.0 is a single script cell without modules and stays as the reference.
+NOTEBOOKS = [ROOT / 'TRADING_BOT_V4_1_Cockpit.ipynb',
+             ROOT / 'TRADING_BOT_V5_Alpaca.ipynb',
+             ROOT / 'TRADING_BOT_V6_Live_Demo.ipynb']
+MARKER = '%%writefile /content/'
+
+
+def module_cells(notebook):
+    for cell in notebook['cells']:
+        source = ''.join(cell['source'])
+        if cell['cell_type'] == 'code' and source.startswith(MARKER):
+            header, _, body = source.partition('\n')
+            yield cell, header[len(MARKER):].strip(), body
+
+
+def extract(notebook_path, target):
+    target = Path(target)
+    target.mkdir(parents=True, exist_ok=True)
+    notebook = json.loads(Path(notebook_path).read_text(encoding='utf-8'))
+    for _, name, body in module_cells(notebook):
+        (target / name).write_text(body, encoding='utf-8')
+    return target
+
+
+def update(notebook_path, source):
+    source = Path(source)
+    notebook = json.loads(Path(notebook_path).read_text(encoding='utf-8'))
+    for cell, name, _ in module_cells(notebook):
+        body = (source / name).read_text(encoding='utf-8')
+        text = MARKER + name + '\n' + body
+        cell['source'] = text.splitlines(keepends=True)
+    Path(notebook_path).write_text(json.dumps(notebook, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+
+
+if __name__ == '__main__':
+    {'extract': extract, 'update': update}[sys.argv[1]](sys.argv[2], sys.argv[3])
