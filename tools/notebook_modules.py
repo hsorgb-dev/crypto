@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOKS = [ROOT / 'TRADING_BOT_V4_1_Cockpit.ipynb',
              ROOT / 'TRADING_BOT_V5_Alpaca.ipynb',
              ROOT / 'TRADING_BOT_V6_Live_Demo.ipynb',
-             ROOT / 'TRADING_BOT_V6_1_Live_Demo.ipynb']
+             ROOT / 'TRADING_BOT_V6_1_Live_Demo.ipynb',
+             ROOT / 'TRADING_BOT_V6_2_Live_Demo.ipynb']
 MARKER = '%%writefile /content/'
 
 
