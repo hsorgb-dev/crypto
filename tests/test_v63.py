@@ -311,9 +311,10 @@ def test_start_error_is_shown_in_the_cockpit(tmp_path, capsys, monkeypatch):
     fake_ipython(monkeypatch, shown)
     cockpit = cockpit_ui.Cockpit(display_enabled=False, latest_path=tmp_path / 'c.html')
     cockpit_ui.startfehler_anzeigen(bot.ZugangsFehler('Secret X fehlt. <b>'), cockpit)
-    for page in (cockpit.latest_browser_page, (tmp_path / 'c.html').read_text()):
-        assert 'Bot nicht gestartet: Alpaca-Zugang' in page
-        assert 'Secret X fehlt. &lt;b&gt;' in page
+    page = cockpit.latest_browser_page
+    assert 'Bot nicht gestartet: Alpaca-Zugang' in page and 'Secret X fehlt. &lt;b&gt;' in page
+    # no file: before start() Drive is not mounted, a file there would block the mount
+    assert not (tmp_path / 'c.html').exists()
     assert 'Secret X fehlt' in capsys.readouterr().out
     assert 'Secret X fehlt. &lt;b&gt;' in shown[0].data     # red box in the start cell
 
@@ -557,3 +558,35 @@ def test_cockpit_says_every_minute(alpaca63, tmp_path):
     assert 'Der Stop wird jede Minute gegen diesen Kurs geprüft' in page
     assert 'alle 5 Minuten' not in page
     assert 'data-stall-min="6"' in page
+
+
+# ---------- Google Drive mount ----------
+
+def test_drive_mount_moves_local_leftovers_aside(tmp_path, capsys):
+    mountpoint = tmp_path / 'drive'
+    leftover = mountpoint / 'MyDrive' / 'Trading_Bot' / 'cockpit_v63_latest.html'
+    leftover.parent.mkdir(parents=True)
+    leftover.write_text('alt')
+    mounted = []
+    bot.drive_einbinden(mountpoint, mount=mounted.append)
+    assert mounted == [str(mountpoint)] and not mountpoint.exists()
+    [aside] = [p for p in tmp_path.iterdir() if p.name.startswith('drive_lokal_')]
+    assert (aside / 'MyDrive' / 'Trading_Bot' / 'cockpit_v63_latest.html').read_text() == 'alt'
+    assert 'Verschoben nach' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('prepare', ['missing', 'empty'])
+def test_drive_mount_without_leftovers(tmp_path, capsys, prepare):
+    mountpoint = tmp_path / 'drive'
+    if prepare == 'empty':
+        mountpoint.mkdir()
+    mounted = []
+    bot.drive_einbinden(mountpoint, mount=mounted.append)
+    assert mounted == [str(mountpoint)]
+    assert [p.name for p in tmp_path.iterdir()] == ([] if prepare == 'missing' else ['drive'])
+    assert capsys.readouterr().out == ''
+
+
+def test_start_uses_the_safe_mount():
+    source = inspect.getsource(bot.start)
+    assert 'drive_einbinden()' in source and 'drive.mount' not in source
