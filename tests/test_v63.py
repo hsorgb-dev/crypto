@@ -55,7 +55,7 @@ def test_all_other_parameters_unchanged():
                 and k not in ('DATEN_FEHLERTYPEN', 'ZEITRAEUME')
                 and k not in ('SPREADS', 'KURSFEHLER', 'HANDELSPAARE', 'ALPACA_KONTO', 'DATENQUELLE')
                 and not k.endswith(('_DATEI', '_ORDNER'))
-                and not k.startswith(('BLOCKER_', 'A_STATUS', 'B_STATUS'))}
+                and not k.startswith(('BLOCKER_', 'A_STATUS', 'B_STATUS', 'SECRET_'))}
     assert settings(bot) == settings(bot_v62)
     assert bot.GEBUEHR == 0.0025 and bot.MAX_OFFENE_POSITIONEN == 3
     assert bot.ROUTINE_ABLEHNUNGEN == tuple(
@@ -225,3 +225,277 @@ def test_notebook_cockpit_cell():
     assert 'COCKPIT_AUTOMATISCH_OEFFNEN = True' in cockpit_cell
     assert cockpit_ui.open_browser_view.__defaults__ == (8771, True)
     assert cockpit_ui.TAB_NAME == 'krypto-cockpit-v63'
+
+
+# ---------- start help: cockpit link and Alpaca key check ----------
+
+import shutil      # noqa: E402
+import subprocess  # noqa: E402
+import sys         # noqa: E402
+import types       # noqa: E402
+
+import requests    # noqa: E402
+from alpaca.common.exceptions import APIError  # noqa: E402
+
+
+def colab_error(name):
+    return type(name, (Exception,), {})()
+
+
+def api_error(status):
+    return APIError('{"code": 40110000, "message": "request is not authorized"}',
+                    types.SimpleNamespace(response=types.SimpleNamespace(status_code=status), request=None))
+
+
+class FakeBroker:
+    def __init__(self, fail=None):
+        self.fail = fail
+
+    def get_account(self):
+        if self.fail:
+            raise self.fail
+        return types.SimpleNamespace(equity='100000', currency='USD')
+
+
+class FakeQuotes:
+    def __init__(self, fail=None):
+        self.fail = fail
+        self.requests = []
+
+    def get_crypto_latest_quote(self, request):
+        self.requests.append(request.symbol_or_symbols)
+        if self.fail:
+            raise self.fail
+        return {}
+
+
+def test_secrets_are_read_and_checked():
+    assert bot.secrets_lesen({'ALPACA_PAPER_API_KEY': ' k ', 'ALPACA_PAPER_SECRET_KEY': 's'}.get) == ('k', 's')
+
+    def raising(name):
+        def lesen(_):
+            raise colab_error(name)
+        return lesen
+
+    with pytest.raises(bot.ZugangsFehler, match='ALPACA_PAPER_API_KEY fehlt'):
+        bot.secrets_lesen(raising('SecretNotFoundError'))
+    with pytest.raises(bot.ZugangsFehler, match='nicht freigegeben.*Notebookzugriff'):
+        bot.secrets_lesen(raising('NotebookAccessError'))
+    with pytest.raises(bot.ZugangsFehler, match='nicht freigegeben'):
+        bot.secrets_lesen(raising('TimeoutException'))
+    with pytest.raises(bot.ZugangsFehler, match='ALPACA_PAPER_SECRET_KEY ist leer'):
+        bot.secrets_lesen({'ALPACA_PAPER_API_KEY': 'k', 'ALPACA_PAPER_SECRET_KEY': '  '}.get)
+
+
+def test_alpaca_keys_are_checked_read_only(capsys):
+    quotes = FakeQuotes()
+    snapshot = bot.alpaca_zugang_pruefen(FakeBroker(), quotes)
+    assert snapshot['equity'] == 100000.0 and quotes.requests == [['BTC/USD']]
+    assert 'Alpaca-Schlüssel gültig' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('broker_fail, quote_fail, message', [
+    (api_error(401), None, r'lehnt die Schlüssel ab \(HTTP 401 bei der Kontoabfrage\)'),
+    (api_error(403), None, r'HTTP 403'),
+    (None, api_error(401), r'HTTP 401 bei der Kursabfrage'),
+    (requests.exceptions.ConnectionError(), None, 'nicht erreichbar'),
+])
+def test_rejected_keys_give_a_clear_message(broker_fail, quote_fail, message):
+    with pytest.raises(bot.ZugangsFehler, match=message):
+        bot.alpaca_zugang_pruefen(FakeBroker(broker_fail), FakeQuotes(quote_fail))
+
+
+def test_start_error_is_shown_in_the_cockpit(tmp_path, capsys, monkeypatch):
+    shown = []
+    fake_ipython(monkeypatch, shown)
+    cockpit = cockpit_ui.Cockpit(display_enabled=False, latest_path=tmp_path / 'c.html')
+    cockpit_ui.startfehler_anzeigen(bot.ZugangsFehler('Secret X fehlt. <b>'), cockpit)
+    for page in (cockpit.latest_browser_page, (tmp_path / 'c.html').read_text()):
+        assert 'Bot nicht gestartet: Alpaca-Zugang' in page
+        assert 'Secret X fehlt. &lt;b&gt;' in page
+    assert 'Secret X fehlt' in capsys.readouterr().out
+    assert 'Secret X fehlt. &lt;b&gt;' in shown[0].data     # red box in the start cell
+
+
+def fake_ipython(monkeypatch, shown):
+    """Minimal IPython.display (not installed in CI): HTML/Javascript objects with .data, recorded display()."""
+    display_module = types.ModuleType('IPython.display')
+    for name in ('HTML', 'Javascript'):
+        setattr(display_module, name, type(name, (), {'__init__': lambda self, data: setattr(self, 'data', data)}))
+    display_module.display = lambda obj, **kw: shown.append(obj)
+    ipython = types.ModuleType('IPython')
+    ipython.display = display_module
+    monkeypatch.setitem(sys.modules, 'IPython', ipython)
+    monkeypatch.setitem(sys.modules, 'IPython.display', display_module)
+
+
+@pytest.fixture
+def fake_colab(monkeypatch):
+    shown = []
+    output = types.ModuleType('google.colab.output')
+    output.answer = 'https://8771-abc.colab.googleusercontent.com/'
+    output.scripts = []
+
+    def eval_js(script, timeout_sec=None):
+        output.scripts.append((script, timeout_sec))
+        if isinstance(output.answer, Exception):
+            raise output.answer
+        return output.answer
+
+    output.eval_js = eval_js
+    colab = types.ModuleType('google.colab')
+    colab.output = output
+    google = types.ModuleType('google')
+    google.colab = colab
+    for name, module in (('google', google), ('google.colab', colab), ('google.colab.output', output)):
+        monkeypatch.setitem(sys.modules, name, module)
+    fake_ipython(monkeypatch, shown)
+    output.shown = shown
+    return output
+
+
+def open_view(automatisch=True):
+    cockpit = cockpit_ui.Cockpit(display_enabled=False)
+    server = cockpit_ui.open_browser_view(cockpit, port=18850, automatisch=automatisch)
+    server.shutdown()
+    server.server_close()
+    return cockpit
+
+
+def test_colab_link_is_plain_html_and_tab_is_opened(fake_colab, capsys):
+    cockpit = open_view()
+    url = fake_colab.answer
+    assert fake_colab.scripts[0][0].startswith('google.colab.kernel.proxyPort(18850')
+    assert cockpit.link == url
+    html, js = fake_colab.shown
+    assert type(html).__name__ == 'HTML' and f'href="{url}"' in html.data and cockpit_ui.LINK_TEXT in html.data
+    assert type(js).__name__ == 'Javascript' and json.dumps(url) in js.data and 'window.open' in js.data
+    assert f'Cockpit-Link: {url}' in capsys.readouterr().out
+    # the link is also part of the cockpit view
+    page = cockpit_ui.render_html(dict(cockpit_ui.snapshot(dict(konto=None, kurse=None), 'WARTET', []), link=url))
+    assert f'href="{url}"' in page
+
+
+def test_colab_link_without_auto_open(fake_colab):
+    open_view(automatisch=False)
+    assert [type(o).__name__ for o in fake_colab.shown] == ['HTML']
+
+
+def test_colab_link_falls_back_to_javascript(fake_colab, capsys):
+    fake_colab.answer = TimeoutError()
+    cockpit = open_view()
+    assert cockpit.link is None
+    [js] = fake_colab.shown
+    assert 'google.colab.kernel.proxyPort' in js.data
+    assert 'Ersatzweg' in capsys.readouterr().out
+
+
+NODE_HARNESS = '''
+const opened = [];
+function node(tag) { return {tag, style: {cssText: ''}, children: [], textContent: '',
+                             appendChild(c) { this.children.push(c); }}; }
+global.document = {createElement: node, body: node('body')};
+global.window = {element: node('out'), open: (url, name) => { opened.push([url, name]); return %s; }};
+global.google = {colab: {kernel: {proxyPort: async (port) => { %s }}}};
+(async () => {
+  await %s;
+  const texts = [];
+  (function walk(n) { if (n.textContent) texts.push(n.textContent); (n.children || []).forEach(walk); })(window.element);
+  console.log(JSON.stringify({opened, texts}));
+})();
+'''
+
+
+def run_node(tmp_path, js, blocked=False, proxy='return `https://${port}-proxy.example/`;'):
+    script = tmp_path / 'run.js'
+    script.write_text(NODE_HARNESS % ('null' if blocked else '{}', proxy, js), encoding='utf-8')
+    return json.loads(subprocess.run(['node', str(script)], capture_output=True, text=True, check=True).stdout)
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='node not installed')
+@pytest.mark.parametrize('blocked', [False, True])
+def test_open_tab_js_runs(tmp_path, blocked):
+    result = run_node(tmp_path, cockpit_ui.open_tab_js('https://x.example/'), blocked)
+    assert result['opened'] == [['https://x.example/', cockpit_ui.TAB_NAME]]
+    expected = cockpit_ui.POPUP_HINWEIS if blocked else cockpit_ui.GEOEFFNET_HINWEIS
+    assert result['texts'] == [expected]
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='node not installed')
+def test_fallback_js_reports_a_failing_proxy(tmp_path):
+    result = run_node(tmp_path, cockpit_ui.browser_view_js(8771), proxy='throw new Error("kaputt");')
+    assert result['opened'] == []
+    assert len(result['texts']) == 1 and 'Cockpit-Link nicht verfügbar' in result['texts'][0]
+    assert 'kaputt' in result['texts'][0]
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='node not installed')
+def test_fallback_js_still_opens_the_tab(tmp_path):
+    result = run_node(tmp_path, cockpit_ui.browser_view_js(8771))
+    assert result['opened'] == [['https://8771-proxy.example/', cockpit_ui.TAB_NAME]]
+    assert cockpit_ui.LINK_TEXT in result['texts']
+
+
+def start_cell():
+    notebook = json.loads((ROOT / 'TRADING_BOT_V6_3_Live_Demo.ipynb').read_text(encoding='utf-8'))
+    cells = [''.join(c['source']) for c in notebook['cells'] if c['cell_type'] == 'code']
+    return next(c for c in cells if 'bot.start(' in c and not c.startswith('%%writefile'))
+
+
+@pytest.fixture
+def run_start_cell(monkeypatch, tmp_path):
+    """Execute the notebook's start cell with fake Colab secrets and fake Alpaca clients."""
+    started = []
+    monkeypatch.setattr(bot, 'start', lambda *a, **kw: started.append(kw))
+    fake_ipython(monkeypatch, [])
+
+    def run(secrets, broker_fail=None, quote_fail=None):
+        userdata = types.ModuleType('google.colab.userdata')
+
+        def get(name):
+            value = secrets.get(name)
+            if isinstance(value, Exception):
+                raise value
+            if value is None:
+                raise colab_error('SecretNotFoundError')
+            return value
+
+        userdata.get = get
+        colab = types.ModuleType('google.colab')
+        colab.userdata = userdata
+        google = types.ModuleType('google')
+        google.colab = colab
+        historical = types.ModuleType('alpaca.data.historical')
+        historical.CryptoHistoricalDataClient = lambda **kw: FakeQuotes(quote_fail)
+        client = types.ModuleType('alpaca.trading.client')
+        client.TradingClient = lambda **kw: FakeBroker(broker_fail)
+        for name, module in (('google', google), ('google.colab', colab), ('google.colab.userdata', userdata),
+                             ('alpaca.data.historical', historical), ('alpaca.trading.client', client)):
+            monkeypatch.setitem(sys.modules, name, module)
+        cockpit = cockpit_ui.Cockpit(display_enabled=False, latest_path=tmp_path / 'c.html')
+        namespace = {'cockpit': cockpit}
+        exec(start_cell(), namespace)
+        return started, cockpit, namespace
+
+    return run
+
+
+KEYS = {'ALPACA_PAPER_API_KEY': 'k', 'ALPACA_PAPER_SECRET_KEY': 's'}
+
+
+def test_start_cell_starts_with_valid_keys(run_start_cell):
+    started, cockpit, namespace = run_start_cell(KEYS)
+    assert len(started) == 1 and started[0]['cockpit'] is cockpit
+    assert 'paper_key' not in namespace and 'paper_secret' not in namespace
+
+
+@pytest.mark.parametrize('secrets, broker_fail, text', [
+    ({}, None, 'ALPACA_PAPER_API_KEY fehlt'),
+    ({**KEYS, 'ALPACA_PAPER_SECRET_KEY': colab_error('NotebookAccessError')}, None, 'nicht freigegeben'),
+    (KEYS, api_error(401), 'lehnt die Schlüssel ab'),
+])
+def test_start_cell_warns_and_does_not_start(run_start_cell, capsys, secrets, broker_fail, text):
+    started, cockpit, _ = run_start_cell(secrets, broker_fail)
+    assert started == []
+    assert text in capsys.readouterr().out
+    assert text in cockpit.latest_browser_page and 'Bot nicht gestartet' in cockpit.latest_browser_page
