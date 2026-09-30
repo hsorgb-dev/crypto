@@ -18,7 +18,8 @@ ORDER_CALLS = ('submit_order', 'close_position', 'close_all_positions', 'cancel_
                'replace_order', 'TradingClient(', 'OrderRequest')
 CHANGED = {'VERSION': '6.3', 'A_VOLUMEN_FAKTOR': 0.0, 'B_VOLUMEN_FAKTOR': 1.0,
            'PULLBACK_GUELTIG_STUNDEN': 8, 'HANDELSPAUSE': 6 * 3600, 'MAX_STUNDEN_OHNE_HANDEL': 10,
-           'MAX_15M_OHNE_HANDEL': 5, 'B_MAX_STUNDEN_OHNE_HANDEL': 2}
+           'MAX_15M_OHNE_HANDEL': 5, 'B_MAX_STUNDEN_OHNE_HANDEL': 2,
+           'INTERVALL': 60, 'AUSGABE_MINUTEN': 5}
 UNCHANGED_FUNCTIONS = ('indikatoren_1h', 'marktregime', 'pullback_pruefen', 'zustand_a_aktualisieren',
                        'zustand_b_aktualisieren', 'signal_15m_pruefen', 'signal_a_pruefen',
                        'signal_b_pruefen', 'ausstieg_pruefen', 'offenes_risiko_berechnen',
@@ -499,3 +500,60 @@ def test_start_cell_warns_and_does_not_start(run_start_cell, capsys, secrets, br
     assert started == []
     assert text in capsys.readouterr().out
     assert text in cockpit.latest_browser_page and 'Bot nicht gestartet' in cockpit.latest_browser_page
+
+
+# ---------- prices and stops every minute ----------
+
+def test_takt_is_aligned_to_full_minutes():
+    t0 = datetime(2026, 9, 24, 10, 3, 5, tzinfo=timezone.utc)
+    assert bot.sekunden_bis_naechster_takt(t0) == pytest.approx(15)
+    assert bot.sekunden_bis_naechster_takt(t0 + timedelta(seconds=25)) == pytest.approx(50)
+
+
+def run_at(monkeypatch, lauf, zeitpunkt):
+    class Fixed(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return zeitpunkt
+    monkeypatch.setattr(bot, 'datetime', Fixed)
+    bot.ein_durchlauf(lauf)
+
+
+def test_stop_every_minute_but_text_log_every_five(alpaca63, monkeypatch, capsys):
+    lauf = bot.hauptschleife(durchlaeufe=1, warten=no_wait)
+    assert 'KURSPRÜFUNG' in capsys.readouterr().out            # first pass: full log
+    now = datetime.now(timezone.utc).replace(second=30, microsecond=0)
+    quiet = now - timedelta(minutes=(now.minute - 1) % 5)       # minute 1, 6, 11, ...
+    loud = now - timedelta(minutes=now.minute % 5)              # minute 0, 5, 10, ...
+    for zeitpunkt in (quiet, loud):
+        lauf['letzte_stunde'] = zeitpunkt.strftime('%Y-%m-%d-%H')
+        lauf['letzte_viertelstunde'] = f"{lauf['letzte_stunde']}-{zeitpunkt.minute // 15}"
+
+    # a position whose stop is hit is sold in a quiet minute, and that is printed
+    konto = bot.konto_laden()
+    kurs = lauf['kurse']['bitcoin']
+    pruefung, _ = bot.risk_gate(konto, 'bitcoin', {'bitcoin': kurs}, kurs * 0.01, spread=0.0005)
+    bot.virtueller_kauf(konto, 'bitcoin', pruefung)
+    konto['positionen']['bitcoin']['stop_loss'] = kurs * 1.5
+    bot.konto_speichern(konto)
+    capsys.readouterr()
+
+    run_at(monkeypatch, lauf, quiet)
+    out = capsys.readouterr().out
+    assert 'KURSPRÜFUNG' not in out and 'jede Minute' not in out
+    assert 'bitcoin' not in bot.konto_laden()['positionen']
+    assert bot.konto_laden()['transaktionen'][-1]['aktion'] == 'VERKAUF'
+    assert out.strip()                                        # the sale is reported right away
+
+    run_at(monkeypatch, lauf, loud)
+    out = capsys.readouterr().out
+    assert 'KURSPRÜFUNG' in out and 'jede Minute geprüft' in out
+
+
+def test_cockpit_says_every_minute(alpaca63, tmp_path):
+    cockpit = cockpit_ui.Cockpit(display_enabled=False, latest_path=tmp_path / 'v63.html')
+    bot.hauptschleife(cockpit=cockpit, durchlaeufe=1, warten=no_wait)
+    page = (tmp_path / 'v63.html').read_text()
+    assert 'Der Stop wird jede Minute gegen diesen Kurs geprüft' in page
+    assert 'alle 5 Minuten' not in page
+    assert 'data-stall-min="6"' in page
