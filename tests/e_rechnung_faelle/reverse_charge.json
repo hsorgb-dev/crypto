@@ -1,0 +1,55 @@
+{
+  "number": "RC-1",
+  "type": "380",
+  "issue_date": "2026-10-23",
+  "delivery_date": "2026-10-20",
+  "currency": "EUR",
+  "buyer_reference": "04011000-12345-67",
+  "order_reference": "BEST-7781",
+  "note": "Vielen Dank für Ihren Auftrag.",
+  "seller": {
+    "name": "Muster Software GmbH",
+    "street": "Hauptstraße 1",
+    "postcode": "10115",
+    "city": "Berlin",
+    "country": "DE",
+    "vat_id": "DE123456789",
+    "tax_number": "30/123/45678",
+    "register_id": "HRB 123456 B",
+    "legal_info": "Amtsgericht Charlottenburg, Geschäftsführerin: Erika Muster",
+    "email": "rechnung@muster-software.de",
+    "contact": {
+      "name": "Erika Muster",
+      "phone": "+49 30 1234567",
+      "email": "buchhaltung@muster-software.de"
+    }
+  },
+  "buyer": {
+    "name": "Bau AG",
+    "street": "Kaiserstr. 2",
+    "postcode": "60311",
+    "city": "Frankfurt",
+    "country": "DE",
+    "vat_id": "DE987654321",
+    "email": "ap@bau.example"
+  },
+  "lines": [
+    {
+      "name": "Bauleistung Rohbau",
+      "quantity": 1,
+      "unit": "LS",
+      "price": 25000,
+      "vat_category": "AE"
+    }
+  ],
+  "payment": {
+    "means": "58",
+    "iban": "DE02120300000000202051",
+    "bic": "BYLADEM1001",
+    "terms_days": 30,
+    "discount": {
+      "days": 10,
+      "percent": 2
+    }
+  }
+}

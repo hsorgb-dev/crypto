@@ -1,0 +1,78 @@
+{
+  "number": "KU-17",
+  "type": "380",
+  "issue_date": "2026-10-23",
+  "delivery_date": "2026-10-20",
+  "currency": "EUR",
+  "buyer_reference": "04011000-12345-67",
+  "order_reference": "BEST-7781",
+  "note": "Vielen Dank für Ihren Auftrag.",
+  "seller": {
+    "name": "Muster Software GmbH",
+    "street": "Hauptstraße 1",
+    "postcode": "10115",
+    "city": "Berlin",
+    "country": "DE",
+    "tax_number": "30/123/45678",
+    "legal_info": "Amtsgericht Charlottenburg, Geschäftsführerin: Erika Muster",
+    "email": "rechnung@muster-software.de",
+    "contact": {
+      "name": "Erika Muster",
+      "phone": "+49 30 1234567",
+      "email": "buchhaltung@muster-software.de"
+    },
+    "small_business": true,
+    "id": "L-4711"
+  },
+  "buyer": {
+    "name": "Stadtverwaltung Beispielstadt",
+    "street": "Rathausplatz 5",
+    "postcode": "80331",
+    "city": "München",
+    "country": "DE",
+    "email": "e-rechnung@beispielstadt.de",
+    "id": "K-10023"
+  },
+  "lines": [
+    {
+      "name": "Beratung Digitalisierung",
+      "description": "Workshop vor Ort",
+      "quantity": 8,
+      "unit": "HUR",
+      "price": 120.0
+    },
+    {
+      "name": "Softwarelizenz Jahresabo",
+      "item_id": "LIC-01",
+      "quantity": 3,
+      "unit": "H87",
+      "price": 249.9,
+      "discount": {
+        "percent": 10,
+        "reason": "Mengenrabatt"
+      }
+    },
+    {
+      "name": "Fachbuch E-Rechnung",
+      "quantity": 2,
+      "unit": "H87",
+      "price": 39.95
+    }
+  ],
+  "charges": [
+    {
+      "amount": 15,
+      "reason": "Versand"
+    }
+  ],
+  "payment": {
+    "means": "58",
+    "iban": "DE02120300000000202051",
+    "bic": "BYLADEM1001",
+    "terms_days": 30,
+    "discount": {
+      "days": 10,
+      "percent": 2
+    }
+  }
+}

@@ -1,0 +1,432 @@
+{
+  "number": "AN-1",
+  "type": "380",
+  "issue_date": "2026-10-23",
+  "currency": "EUR",
+  "buyer_reference": "04011000-12345-67",
+  "order_reference": "BEST-7781",
+  "note": "Vielen Dank für Ihren Auftrag.",
+  "seller": {
+    "name": "Muster Software GmbH",
+    "street": "Hauptstraße 1",
+    "postcode": "10115",
+    "city": "Berlin",
+    "country": "DE",
+    "vat_id": "DE123456789",
+    "tax_number": "30/123/45678",
+    "register_id": "HRB 123456 B",
+    "legal_info": "Amtsgericht Charlottenburg, Geschäftsführerin: Erika Muster",
+    "email": "rechnung@muster-software.de",
+    "contact": {
+      "name": "Erika Muster",
+      "phone": "+49 30 1234567",
+      "email": "buchhaltung@muster-software.de"
+    }
+  },
+  "buyer": {
+    "name": "Stadtverwaltung Beispielstadt",
+    "street": "Rathausplatz 5",
+    "postcode": "80331",
+    "city": "München",
+    "country": "DE",
+    "email": "e-rechnung@beispielstadt.de",
+    "id": "K-10023"
+  },
+  "lines": [
+    {
+      "name": "Position 1",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 1,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 2",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 2,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 3",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 3,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 4",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 4,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 5",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 5,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 6",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 6,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 7",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 7,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 8",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 8,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 9",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 9,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 10",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 10,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 11",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 11,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 12",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 12,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 13",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 13,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 14",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 14,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 15",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 15,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 16",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 16,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 17",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 17,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 18",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 18,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 19",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 19,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 20",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 20,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 21",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 21,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 22",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 22,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 23",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 23,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 24",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 24,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 25",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 25,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 26",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 26,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 27",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 27,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 28",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 28,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 29",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 29,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 30",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 30,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 31",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 31,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 32",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 32,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 33",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 33,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 34",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 34,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 35",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 35,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 36",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 36,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 37",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 37,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 38",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 38,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 39",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 39,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 40",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 40,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 41",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 41,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 42",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 42,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 43",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 43,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 44",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 44,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    },
+    {
+      "name": "Position 45",
+      "description": "Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung Lange Beschreibung ",
+      "quantity": 45,
+      "unit": "HUR",
+      "price": "87,50",
+      "vat_rate": 19
+    }
+  ],
+  "charges": [
+    {
+      "amount": 15.0,
+      "reason": "Versandpauschale",
+      "vat_rate": 19
+    }
+  ],
+  "payment": {
+    "means": "58",
+    "iban": "DE02120300000000202051",
+    "bic": "BYLADEM1001",
+    "terms_days": 30,
+    "discount": {
+      "days": 10,
+      "percent": 2
+    }
+  },
+  "period": {
+    "start": "2026-10-01",
+    "end": "2026-10-31"
+  },
+  "allowances": [
+    {
+      "percent": 3,
+      "reason": "Treuerabatt",
+      "vat_rate": 19
+    }
+  ],
+  "prepaid": 500,
+  "delivery": {
+    "name": "Lager Süd",
+    "street": "Industriestr. 9",
+    "postcode": "81249",
+    "city": "München"
+  }
+}

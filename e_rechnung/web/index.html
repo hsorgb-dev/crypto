@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>E-Rechnung</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2430;--muted:#5b6575;--line:#d9dee6;--soft:#eef1f5;--accent:#1f5fae;--accent-ink:#fff;--bad:#b42318;--warn:#8a5a00;--ok:#1e7a3c}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--ink:#e6e9ee;--muted:#a3acb9;--line:#343c49;--soft:#232a35;--accent:#7fb0ff;--accent-ink:#0d1420;--bad:#ff8a80;--warn:#f5c26b;--ok:#7ad69a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:14px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.bar h1{font-size:20px;margin:0}.bar .sub{color:var(--muted);font-size:13px}
+nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav button{background:none;border:1px solid transparent;border-radius:6px;padding:7px 12px;color:var(--muted);font:inherit;cursor:pointer}
+nav button.active{border-color:var(--line);background:var(--soft);color:var(--ink);font-weight:600}
+main{max-width:1240px;margin:0 auto;padding:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}.side{position:static}}
+section.card,.side .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+h2{font-size:15px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 12px}
+.wide{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+label.check{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+input,select,textarea{font:inherit;font-size:14.5px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+textarea{min-height:58px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.bad{border-color:var(--bad)!important;background:color-mix(in srgb,var(--bad) 8%,var(--card))}
+button.btn{font:inherit;font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.link{background:none;border:none;color:var(--accent);cursor:pointer;font:inherit;padding:0}
+.lines{width:100%;border-collapse:collapse}
+.lines th{font-size:12px;color:var(--muted);font-weight:600;text-align:left;padding:4px}
+.lines td{padding:4px;vertical-align:top}.lines td.num{text-align:right;white-space:nowrap;padding-top:11px}
+.lines .x{border:none;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 6px}
+.scroll{overflow-x:auto}
+.lines input,.lines select{padding:6px 7px}
+.totals{width:100%;border-collapse:collapse;font-size:14px}
+.totals td{padding:3px 0}.totals td:last-child{text-align:right;white-space:nowrap}
+.totals tr.strong td{font-weight:700;border-top:1px solid var(--ink);padding-top:6px}
+.issues{list-style:none;padding:0;margin:8px 0 0;font-size:13px;max-height:340px;overflow:auto}
+.issues li{border-left:3px solid var(--bad);background:var(--soft);padding:5px 8px;margin:4px 0;border-radius:4px;cursor:pointer}
+.issues li.hinweis{border-color:var(--warn)}
+.ok{color:var(--ok);font-weight:600}.muted{color:var(--muted);font-size:13px}
+.actions{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.side{position:sticky;top:12px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+iframe{width:100%;height:1100px;border:1px solid var(--line);border-radius:10px;background:#fff}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font-size:12.5px}
+code{font-size:13px}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:14px;max-width:90vw}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div><h1>E-Rechnung</h1><div class="sub">XRechnung 3.0 · ZUGFeRD 2.3 · Factur-X</div></div>
+  <nav>
+    <button class="active" data-tab="create">Erstellen</button>
+    <button data-tab="receive">Empfangen &amp; prüfen</button>
+    <button data-tab="api">Für die KI / API</button>
+  </nav>
+</div></header>
+
+<main>
+<!-- ============================================================ Erstellen -->
+<div id="tab-create" class="layout">
+<form id="form" autocomplete="off" onsubmit="return false">
+  <section class="card">
+    <h2>Rechnung <span class="row"><button type="button" class="btn" id="example">Beispiel laden</button><button type="button" class="btn" id="reset">Leeren</button></span></h2>
+    <div class="grid">
+      <label>Rechnungsart<select data-path="type" id="type"></select></label>
+      <label>Rechnungsnummer *<input data-path="number"></label>
+      <label>Rechnungsdatum *<input type="date" data-path="issue_date" id="issue_date"></label>
+      <label>Leistungsdatum<input type="date" data-path="delivery_date"></label>
+      <label>Leistungszeitraum von<input type="date" data-path="period.start"></label>
+      <label>Leistungszeitraum bis<input type="date" data-path="period.end"></label>
+      <label>Käuferreferenz / Leitweg-ID<input data-path="buyer_reference" placeholder="bei Behörden: Leitweg-ID"></label>
+      <label>Bestellnummer des Käufers<input data-path="order_reference"></label>
+      <label>Bezug: frühere Rechnung Nr.<input data-path="preceding_invoice.number"></label>
+      <label>Währung<input data-path="currency" value="EUR" maxlength="3"></label>
+      <label class="wide">Bemerkung<textarea data-path="note" placeholder="z. B. Vielen Dank für Ihren Auftrag."></textarea></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Verkäufer (Ihr Unternehmen) <button type="button" class="btn" id="save-seller">Als Vorlage speichern</button></h2>
+    <div class="grid">
+      <label class="wide">Firmenname *<input data-path="seller.name"></label>
+      <label>Straße und Nr.<input data-path="seller.street"></label>
+      <label>PLZ *<input data-path="seller.postcode"></label>
+      <label>Ort *<input data-path="seller.city"></label>
+      <label>Land<input data-path="seller.country" value="DE" maxlength="2"></label>
+      <label>USt-IdNr.<input data-path="seller.vat_id" placeholder="DE123456789"></label>
+      <label>Steuernummer<input data-path="seller.tax_number"></label>
+      <label>Handelsregister<input data-path="seller.register_id" placeholder="HRB 12345, AG Berlin"></label>
+      <label>E-Mail für E-Rechnungen<input type="email" data-path="seller.email"></label>
+      <label>Ansprechpartner<input data-path="seller.contact.name"></label>
+      <label>Telefon<input data-path="seller.contact.phone"></label>
+      <label>E-Mail Ansprechpartner<input type="email" data-path="seller.contact.email"></label>
+      <label class="wide">Rechtliche Angaben (Geschäftsführung, Amtsgericht …)<input data-path="seller.legal_info"></label>
+      <label class="check wide"><input type="checkbox" data-path="seller.small_business" style="width:auto"> Kleinunternehmer nach § 19 UStG (keine Umsatzsteuer)</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Käufer</h2>
+    <div class="grid">
+      <label class="wide">Name *<input data-path="buyer.name"></label>
+      <label>Straße und Nr.<input data-path="buyer.street"></label>
+      <label>PLZ<input data-path="buyer.postcode"></label>
+      <label>Ort<input data-path="buyer.city"></label>
+      <label>Land<input data-path="buyer.country" value="DE" maxlength="2"></label>
+      <label>USt-IdNr.<input data-path="buyer.vat_id"></label>
+      <label>Kundennummer<input data-path="buyer.id"></label>
+      <label>E-Mail für E-Rechnungen<input type="email" data-path="buyer.email"></label>
+      <label>Ansprechpartner<input data-path="buyer.contact.name"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Positionen <button type="button" class="btn" id="add-line">+ Position</button></h2>
+    <div class="scroll"><table class="lines" id="lines">
+      <thead><tr><th style="min-width:200px">Bezeichnung</th><th style="width:80px">Menge</th><th style="width:110px">Einheit</th><th style="width:105px">Preis netto</th><th style="width:96px">USt</th><th style="width:78px" title="Prozent, oder Betrag mit €">Rabatt</th><th style="width:96px;text-align:right">Betrag</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="muted" style="margin:6px 0 0">Preise netto. Komma oder Punkt als Dezimaltrennzeichen. Für Stornos eine negative Menge eintragen.</p>
+  </section>
+
+  <section class="card">
+    <h2>Zuschläge &amp; Nachlässe <button type="button" class="btn" id="add-ac">+ Zeile</button></h2>
+    <div class="scroll"><table class="lines" id="acs">
+      <thead><tr><th style="width:130px">Art</th><th style="min-width:200px">Grund</th><th style="width:110px">Betrag netto</th><th style="width:96px">USt</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>Zahlung</h2>
+    <div class="grid">
+      <label>Zahlungsart<select data-path="payment.means" id="means"></select></label>
+      <label class="pay-transfer">IBAN<input data-path="payment.iban"></label>
+      <label class="pay-transfer">BIC<input data-path="payment.bic"></label>
+      <label class="pay-transfer">Kontoinhaber<input data-path="payment.account_name" placeholder="Standard: Firmenname"></label>
+      <label>Zahlungsziel (Tage)<input data-path="payment.terms_days" inputmode="numeric" value="14"></label>
+      <label>Skonto Tage<input data-path="payment.discount.days" inputmode="numeric"></label>
+      <label>Skonto %<input data-path="payment.discount.percent" inputmode="decimal"></label>
+      <label>Bereits gezahlt<input data-path="prepaid" inputmode="decimal"></label>
+      <label class="pay-debit hidden">Mandatsreferenz<input data-path="payment.mandate_id"></label>
+      <label class="pay-debit hidden">Gläubiger-ID<input data-path="payment.creditor_id"></label>
+      <label class="pay-debit hidden">IBAN des Käufers<input data-path="payment.debtor_iban"></label>
+      <label class="wide">Zahlungsbedingungen (optional)<input data-path="payment.terms" placeholder="Standard: Zahlbar ohne Abzug bis zum …"></label>
+      <label class="wide">Befreiungsgrund bei steuerfreien Umsätzen<input data-path="vat_exemption_reason" placeholder="z. B. Steuerfrei nach § 4 Nr. 14 UStG"></label>
+    </div>
+  </section>
+</form>
+
+<aside class="side">
+  <div class="card">
+    <h2>Summen</h2>
+    <table class="totals" id="totals"><tr><td class="muted">Noch keine Positionen.</td></tr></table>
+  </div>
+  <div class="card">
+    <h2>Ausgabe</h2>
+    <div class="actions">
+      <label>Format<select id="format"></select></label>
+      <button type="button" class="btn primary" id="download">E-Rechnung herunterladen</button>
+      <button type="button" class="btn" id="preview">Vorschau (PDF-Sichtbeleg)</button>
+      <div class="row"><button type="button" class="btn" id="save-json">JSON speichern</button>
+        <button type="button" class="btn" id="load-json">JSON laden</button></div>
+      <input type="file" id="json-file" accept=".json,application/json" class="hidden">
+    </div>
+  </div>
+  <div class="card">
+    <h2>Prüfung</h2>
+    <div id="status" class="muted">Daten eingeben …</div>
+    <ul class="issues" id="issues"></ul>
+  </div>
+</aside>
+</div>
+
+<!-- ============================================================ Empfangen -->
+<div id="tab-receive" class="hidden">
+  <section class="card">
+    <h2>E-Rechnung öffnen</h2>
+    <div class="drop" id="drop">XRechnung (XML) oder ZUGFeRD / Factur-X (PDF) hierher ziehen oder <button class="link" id="pick">Datei auswählen</button>
+      <input type="file" id="file" accept=".xml,.pdf,application/xml,text/xml,application/pdf" class="hidden"></div>
+    <div class="row hidden" id="file-actions" style="margin-top:12px;align-items:center">
+      <span class="muted" id="file-name"></span>
+      <button class="btn" id="to-form">In Formular übernehmen</button>
+      <select id="convert-format" style="width:auto"></select>
+      <button class="btn" id="convert">Umwandeln &amp; herunterladen</button>
+      <button class="btn" id="official">Offiziell prüfen (KoSIT/veraPDF)</button>
+    </div>
+    <div id="official-result" class="muted" style="margin-top:10px"></div>
+  </section>
+  <iframe id="view" class="hidden" title="Rechnungsansicht" sandbox=""></iframe>
+</div>
+
+<!-- ============================================================ API -->
+<div id="tab-api" class="hidden">
+  <section class="card">
+    <h2>Anbindung an die Firmen-KI</h2>
+    <p>Die KI erzeugt die Rechnungsdaten als JSON (Schema: <a href="/api/schema" target="_blank">/api/schema</a>) und ruft eine dieser Schnittstellen auf. Fehlen Pflichtangaben, kommt eine Liste mit Feldnamen und deutscher Erklärung zurück, die die KI direkt beheben kann.</p>
+    <h2>HTTP-API</h2>
+<pre>POST /api/erstellen?format=xrechnung-cii   Rechnungs-JSON  →  Datei (oder 422 mit "issues")
+POST /api/pruefen?format=xrechnung-cii     Rechnungs-JSON  →  {"ok", "issues", "totals"}
+POST /api/lesen                            XML oder PDF    →  {"data", "issues"}
+POST /api/anzeigen                         XML oder PDF    →  HTML-Ansicht
+POST /api/umwandeln?format=zugferd         XML oder PDF    →  Datei
+POST /api/offiziell                        XML oder PDF    →  {"valid", "messages"}
+GET  /api/schema · /api/tools · /api/beispiel · /api/formate</pre>
+<pre>curl -X POST "http://127.0.0.1:8765/api/erstellen?format=zugferd" \
+     -H "Content-Type: application/json" --data @rechnung.json -o rechnung.pdf</pre>
+    <h2>Function Calling (Claude, OpenAI …)</h2>
+    <p>Fertige Werkzeug-Definitionen: <a href="/api/tools" target="_blank">/api/tools</a> (<code>e_rechnung_erstellen</code>, <code>e_rechnung_pruefen</code>, <code>e_rechnung_lesen</code>).</p>
+    <h2>MCP (Claude Desktop, Claude Code, andere MCP-Clients)</h2>
+<pre>{"mcpServers": {"e-rechnung": {"command": "python", "args": ["-m", "e_rechnung", "mcp"],
+                                "cwd": "/pfad/zum/repository"}}}</pre>
+    <h2>Formate</h2>
+    <ul id="format-list"></ul>
+  </section>
+</div>
+</main>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+const TYPES = {'380':'Rechnung','381':'Rechnungskorrektur / Gutschrift (Credit Note)','384':'Korrigierte Rechnung','389':'Gutschrift (Selbstfakturierung)','326':'Teilrechnung','875':'Abschlagsrechnung (Bau)','876':'Teilschlussrechnung (Bau)','877':'Schlussrechnung (Bau)'};
+const UNITS = {'H87':'Stück','C62':'Einheit','HUR':'Stunde','DAY':'Tag','MON':'Monat','LS':'Pauschale','KGM':'kg','MTR':'m','MTK':'m²','MTQ':'m³','LTR':'l','KMT':'km','KWH':'kWh','SET':'Satz','WEE':'Woche','ANN':'Jahr','MIN':'Minute'};
+const MEANS = {'58':'SEPA-Überweisung','30':'Überweisung (nicht SEPA)','59':'SEPA-Lastschrift','10':'Barzahlung','97':'Verrechnung','1':'Nicht definiert'};
+const VAT = [['S|19','19 %'],['S|7','7 %'],['Z|0','0 % Nullsatz'],['E|0','steuerfrei'],['AE|0','Reverse Charge'],['K|0','innergem. Lief.'],['G|0','Ausfuhr'],['O|','nicht steuerbar']];
+const FORMATS = {'xrechnung-cii':'XRechnung 3.0 (CII-XML)','xrechnung-ubl':'XRechnung 3.0 (UBL-XML)','zugferd':'ZUGFeRD 2.3 PDF (EN 16931)','zugferd-xrechnung':'ZUGFeRD 2.3 PDF (XRECHNUNG)'};
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const store = {get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+function options(select, map, selected){ select.innerHTML = Object.entries(map).map(([k,v]) => `<option value="${k}"${k===selected?' selected':''}>${v}</option>`).join(''); }
+options($('#type'), TYPES, '380'); options($('#means'), MEANS, '58'); options($('#format'), FORMATS, store.get('e_rechnung_format') || 'xrechnung-cii');
+options($('#convert-format'), FORMATS, 'zugferd');
+$('#format-list').innerHTML = Object.entries(FORMATS).map(([k,v]) => `<li><code>${k}</code> – ${v}</li>`).join('');
+$('#issue_date').value = new Date().toISOString().slice(0,10);
+
+function toast(text){ const t=$('#toast'); t.textContent=text; t.classList.remove('hidden'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.add('hidden'),3500); }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function money(v, cur){ if(v===undefined||v===null||v==='') return ''; const n=Number(v); return n.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+(cur==='EUR'?'€':cur); }
+
+// ------------------------------------------------------------ lines and allowances/charges
+function vatSelect(cat, rate){ const key = `${cat||'S'}|${rate ?? (cat && cat!=='S' ? '0' : '19')}`.replace('O|0','O|');
+  const opts = VAT.map(([k,v]) => `<option value="${k}"${k===key?' selected':''}>${v}</option>`).join('');
+  return `<select data-k="vat">${opts}${VAT.some(v=>v[0]===key)?'':`<option value="${esc(key)}" selected>${esc(cat)} ${esc(rate)} %</option>`}</select>`; }
+function addLine(l = {}){
+  const tr = document.createElement('tr');
+  const unit = l.unit || 'H87';
+  tr.innerHTML = `<td><input data-k="name" value="${esc(l.name)}" placeholder="Leistung / Artikel"><input data-k="description" value="${esc(l.description)}" placeholder="Beschreibung (optional)" style="margin-top:4px;font-size:13px"></td>
+    <td><input data-k="quantity" inputmode="decimal" value="${esc(l.quantity ?? 1)}"></td>
+    <td><select data-k="unit">${Object.entries(UNITS).map(([k,v])=>`<option value="${k}"${k===unit?' selected':''}>${v}</option>`).join('')}${UNITS[unit]?'':`<option value="${esc(unit)}" selected>${esc(unit)}</option>`}</select></td>
+    <td><input data-k="price" inputmode="decimal" value="${esc(l.price)}"></td>
+    <td>${vatSelect(l.vat_category, l.vat_rate)}</td>
+    <td><input data-k="discount" placeholder="% / €" value="${esc(l.discount?.percent ? l.discount.percent : l.discount?.amount ? l.discount.amount + ' €' : '')}"></td>
+    <td class="num" data-k="net"></td><td><button type="button" class="x" title="Entfernen">×</button></td>`;
+  // keep what the row has no input for (item number, surcharge, discount reason …) so nothing gets lost
+  const {name, description, quantity, unit: _unit, price, vat_category, vat_rate, net, ...rest} = l;
+  tr._extra = rest;
+  tr.querySelector('.x').onclick = () => { tr.remove(); changed(); };
+  $('#lines tbody').appendChild(tr);
+}
+function addAc(a = {}, charge = true){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><select data-k="kind"><option value="charge"${charge?' selected':''}>Zuschlag</option><option value="allowance"${charge?'':' selected'}>Nachlass</option></select></td>
+    <td><input data-k="reason" value="${esc(a.reason)}" placeholder="z. B. Versandkosten"></td>
+    <td><input data-k="amount" inputmode="decimal" value="${esc(a.amount)}"></td>
+    <td>${vatSelect(a.vat_category, a.vat_rate)}</td><td><button type="button" class="x" title="Entfernen">×</button></td>`;
+  const {reason, amount, vat_category, vat_rate, ...rest} = a;
+  tr._extra = a.percent ? {} : rest;
+  tr.querySelector('.x').onclick = () => { tr.remove(); changed(); };
+  $('#acs tbody').appendChild(tr);
+}
+$('#add-line').onclick = () => { addLine(); changed(); };
+$('#add-ac').onclick = () => { addAc(); changed(); };
+
+// ------------------------------------------------------------ form <-> JSON
+let extra = {};   // loaded data without a form field (project, delivery address …), kept on save and create
+function deletePath(obj, path){ const keys = path.split('.'); const parent = keys.slice(0,-1).reduce((o,k) => o?.[k], obj); if (parent) delete parent[keys.at(-1)]; }
+function setPath(obj, path, value){ const keys = path.split('.'); let o = obj; keys.slice(0,-1).forEach(k => o = o[k] ??= {}); o[keys.at(-1)] = value; }
+function getPath(obj, path){ return path.split('.').reduce((o,k) => o?.[k], obj); }
+function splitVat(v){ const [cat, rate] = v.split('|'); return rate === '' ? {vat_category: cat} : {vat_category: cat, vat_rate: rate}; }
+function collect(){
+  const data = structuredClone(extra);
+  $$('#form [data-path]').forEach(el => {
+    const v = el.type === 'checkbox' ? el.checked : el.value.trim();
+    if (v === '' || v === false) return;
+    setPath(data, el.dataset.path, v);
+  });
+  data.lines = $$('#lines tbody tr').map(tr => {
+    const g = k => tr.querySelector(`[data-k="${k}"]`).value.trim();
+    const line = {...structuredClone(tr._extra || {}), name: g('name'), quantity: g('quantity'), unit: g('unit'), price: g('price'), ...splitVat(g('vat'))};
+    delete line.discount;
+    if (g('description')) line.description = g('description');
+    const discount = g('discount'), reason = tr._extra?.discount?.reason;
+    if (discount) line.discount = {...(/€\s*$/.test(discount) ? {amount: discount.replace('€', '').trim()} : {percent: discount}), ...(reason ? {reason} : {})};
+    return line;
+  });
+  const acs = $$('#acs tbody tr').map(tr => { const g = k => tr.querySelector(`[data-k="${k}"]`).value.trim();
+    return {...structuredClone(tr._extra || {}), kind: g('kind'), reason: g('reason'), amount: g('amount'), ...splitVat(g('vat'))}; }).filter(a => a.amount);
+  data.charges = acs.filter(a => a.kind === 'charge').map(({kind, ...a}) => a);
+  data.allowances = acs.filter(a => a.kind === 'allowance').map(({kind, ...a}) => a);
+  if (data.seller?.small_business) { data.lines.forEach(l => { delete l.vat_category; delete l.vat_rate; });
+    [...data.charges, ...data.allowances].forEach(a => { delete a.vat_category; delete a.vat_rate; }); }
+  return data;
+}
+function fill(data){
+  extra = structuredClone(data);
+  ['lines', 'charges', 'allowances', 'stated', 'syntax', 'specification', 'container'].forEach(k => delete extra[k]);
+  $$('#form [data-path]').forEach(el => deletePath(extra, el.dataset.path));
+  $$('#form [data-path]').forEach(el => {
+    const v = getPath(data, el.dataset.path);
+    if (el.type === 'checkbox') el.checked = !!v;
+    else el.value = Array.isArray(v) ? v.join('\n') : (v ?? (el.dataset.path.endsWith('country') ? 'DE' : el.dataset.path === 'currency' ? 'EUR' : ''));
+  });
+  $('#lines tbody').innerHTML = ''; $('#acs tbody').innerHTML = '';
+  (data.lines || []).forEach(addLine);
+  (data.charges || []).forEach(a => addAc(a, true)); (data.allowances || []).forEach(a => addAc(a, false));
+  if (!(data.lines || []).length) addLine();
+  payFields(); changed();
+}
+
+// ------------------------------------------------------------ live check against the server
+let timer;
+function changed(){ clearTimeout(timer); timer = setTimeout(check, 350); store.set('e_rechnung_entwurf', collect()); }
+$('#form').addEventListener('input', changed);
+$('#format').addEventListener('change', () => { store.set('e_rechnung_format', $('#format').value); check(); });
+function payFields(){ const m = $('#means').value;
+  $$('.pay-transfer').forEach(e => e.classList.toggle('hidden', !['58','30'].includes(m)));
+  $$('.pay-debit').forEach(e => e.classList.toggle('hidden', m !== '59')); }
+$('#means').addEventListener('change', payFields);
+
+function fieldFor(path){
+  const m = path.match(/^lines\[(\d+)\]\.(\w+)/);
+  if (m) { const tr = $$('#lines tbody tr')[+m[1]]; const k = m[2] === 'vat_rate' || m[2] === 'vat_category' ? 'vat' : m[2];
+    return tr?.querySelector(`[data-k="${k}"]`); }
+  return $(`#form [data-path="${path}"]`);
+}
+async function check(){
+  const res = await fetch('/api/pruefen?format=' + $('#format').value, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(collect())});
+  const out = await res.json();
+  $$('.bad').forEach(e => e.classList.remove('bad'));
+  const issues = out.issues || [];
+  const errors = issues.filter(i => i.level === 'fehler');
+  $('#status').innerHTML = errors.length ? `<span style="color:var(--bad);font-weight:600">${errors.length} Pflichtangabe(n) fehlen oder sind falsch</span>` : '<span class="ok">Bereit zum Erstellen</span>';
+  $('#issues').innerHTML = issues.map((i, n) => `<li class="${esc(i.level)}" data-n="${n}">${esc(i.message)}${i.rule ? ` <span class="muted">${esc(i.rule)}</span>` : ''}</li>`).join('');
+  $$('#issues li').forEach(li => li.onclick = () => { const el = fieldFor(issues[+li.dataset.n].field); if (el) { el.focus(); el.scrollIntoView({block:'center'}); } });
+  errors.forEach(i => fieldFor(i.field)?.classList.add('bad'));
+  const t = out.totals; if (!t) return;
+  $$('#lines tbody tr').forEach((tr, n) => tr.querySelector('[data-k="net"]').textContent = t.lines[n] ? money(t.lines[n].net, t.currency) : '');
+  const rows = [['Summe Positionen', t.line_total]];
+  if (+t.allowance_total) rows.push(['Nachlässe', '-' + t.allowance_total]);
+  if (+t.charge_total) rows.push(['Zuschläge', t.charge_total]);
+  rows.push(['Nettobetrag', t.tax_basis_total]);
+  t.vat.forEach(v => rows.push([`USt ${v.category === 'S' ? Number(v.rate).toLocaleString('de-DE') + ' %' : v.category + ' 0 %'} auf ${money(v.basis, t.currency)}`, v.amount]));
+  rows.push(['Gesamtbetrag', t.grand_total, true]);
+  if (+t.prepaid) { rows.push(['bereits gezahlt', '-' + t.prepaid]); rows.push(['Zahlbetrag', t.due_amount, true]); }
+  $('#totals').innerHTML = rows.map(([l, v, s]) => `<tr class="${s?'strong':''}"><td>${esc(l)}</td><td>${money(v, t.currency)}</td></tr>`).join('')
+    + (t.due_date ? `<tr><td class="muted">fällig am</td><td class="muted">${new Date(t.due_date).toLocaleDateString('de-DE')}</td></tr>` : '');
+}
+
+// ------------------------------------------------------------ downloads
+function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function filenameOf(res, fallback){ const m = (res.headers.get('Content-Disposition') || '').match(/filename\*=UTF-8''([^;]+)/); return m ? decodeURIComponent(m[1]) : fallback; }
+async function build(format, open){
+  const res = await fetch('/api/erstellen?format=' + format, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(collect())});
+  if (!res.ok) { await check(); toast('Bitte zuerst die markierten Angaben ergänzen.'); return; }
+  const blob = await res.blob();
+  if (open) window.open(URL.createObjectURL(blob), '_blank'); else { saveBlob(blob, filenameOf(res, 'rechnung')); toast('E-Rechnung erstellt.'); }
+}
+$('#download').onclick = () => build($('#format').value, false);
+$('#preview').onclick = () => build('pdf', true);
+$('#save-json').onclick = () => saveBlob(new Blob([JSON.stringify(collect(), null, 2)], {type:'application/json'}), (collect().number || 'rechnung') + '.json');
+$('#load-json').onclick = () => $('#json-file').click();
+$('#json-file').onchange = async e => { try { fill(JSON.parse(await e.target.files[0].text())); toast('JSON geladen.'); } catch (err) { toast('Datei ist kein gültiges JSON.'); } e.target.value = ''; };
+$('#example').onclick = async () => fill(await (await fetch('/api/beispiel')).json());
+$('#reset').onclick = () => { const seller = store.get('e_rechnung_verkaeufer'); fill({seller: seller || {}, issue_date: new Date().toISOString().slice(0,10), payment: {terms_days: 14}}); };
+$('#save-seller').onclick = () => { store.set('e_rechnung_verkaeufer', collect().seller || {}); toast('Verkäuferdaten gespeichert (nur in diesem Browser).'); };
+
+// ------------------------------------------------------------ receive tab
+let received = null;
+async function openFile(file){
+  received = file; $('#file-name').textContent = file.name; $('#file-actions').classList.remove('hidden'); $('#official-result').textContent = '';
+  const res = await fetch('/api/anzeigen', {method:'POST', body: file});
+  const view = $('#view'); view.classList.remove('hidden');
+  if (res.ok) view.srcdoc = await res.text();
+  else { const out = await res.json(); view.srcdoc = '<p style="font:15px system-ui;padding:16px;color:#b42318">' + esc((out.issues || []).map(i => i.message).join(' ') || out.error) + '</p>'; }
+}
+$('#pick').onclick = () => $('#file').click();
+$('#file').onchange = e => e.target.files[0] && openFile(e.target.files[0]);
+const drop = $('#drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && openFile(e.dataTransfer.files[0]); };
+$('#to-form').onclick = async () => { const out = await (await fetch('/api/lesen', {method:'POST', body: received})).json();
+  if (out.data) { fill(out.data); show('create'); toast('Rechnung ins Formular übernommen.'); } };
+$('#convert').onclick = async () => { const res = await fetch('/api/umwandeln?format=' + $('#convert-format').value, {method:'POST', body: received});
+  if (res.ok) saveBlob(await res.blob(), filenameOf(res, 'rechnung')); else { const out = await res.json(); toast((out.issues || []).map(i => i.message).slice(0,2).join(' ') || out.error); } };
+$('#official').onclick = async () => { $('#official-result').textContent = 'Prüfe mit dem offiziellen Validator … (dauert einige Sekunden)';
+  const out = await (await fetch('/api/offiziell', {method:'POST', body: received})).json();
+  if (out.error) { $('#official-result').textContent = out.error; return; }
+  $('#official-result').innerHTML = (out.valid ? '<span class="ok">Offiziell gültig.</span>' : '<span style="color:var(--bad);font-weight:600">Offiziell ungültig.</span>')
+    + '<ul class="issues">' + out.messages.map(m => `<li class="${esc(m.level)}">${esc(m.message)}</li>`).join('') + '</ul>'; };
+
+// ------------------------------------------------------------ tabs and start
+function show(tab){ ['create','receive','api'].forEach(t => $('#tab-' + t).classList.toggle('hidden', t !== tab));
+  $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); }
+$$('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
+const draft = store.get('e_rechnung_entwurf');
+if (draft && (draft.lines || []).some(l => l.name)) fill(draft);
+else { const seller = store.get('e_rechnung_verkaeufer'); if (seller) fill({seller, issue_date: $('#issue_date').value, payment: {terms_days: 14}}); else { addLine(); payFields(); check(); } }
+</script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "E-Rechnung",
+  "description": "Rechnungsdaten für XRechnung 3.0 und ZUGFeRD 2.3. Beträge netto, Umsatzsteuer und Summen werden automatisch berechnet. Datumsangaben im Format JJJJ-MM-TT.",
+  "type": "object",
+  "required": [
+    "number",
+    "issue_date",
+    "seller",
+    "buyer",
+    "lines"
+  ],
+  "properties": {
+    "number": {
+      "type": "string",
+      "description": "Rechnungsnummer (eindeutig, fortlaufend)."
+    },
+    "type": {
+      "type": "string",
+      "description": "Rechnungsart: 380 Rechnung, 381 Rechnungskorrektur / Gutschrift (Credit Note), 384 Korrigierte Rechnung, 389 Gutschrift (Selbstfakturierung), 326 Teilrechnung, 875 Abschlagsrechnung (Bau), 876 Teilschlussrechnung (Bau), 877 Schlussrechnung (Bau). Standard 380.",
+      "enum": [
+        "380",
+        "381",
+        "384",
+        "389",
+        "326",
+        "875",
+        "876",
+        "877"
+      ]
+    },
+    "issue_date": {
+      "type": "string",
+      "description": "Rechnungsdatum, JJJJ-MM-TT."
+    },
+    "delivery_date": {
+      "type": "string",
+      "description": "Liefer- oder Leistungsdatum, JJJJ-MM-TT."
+    },
+    "period": {
+      "type": "object",
+      "description": "Leistungszeitraum statt Leistungsdatum.",
+      "properties": {
+        "start": {
+          "type": "string",
+          "description": "Beginn, JJJJ-MM-TT."
+        },
+        "end": {
+          "type": "string",
+          "description": "Ende, JJJJ-MM-TT."
+        }
+      }
+    },
+    "due_date": {
+      "type": "string",
+      "description": "Fälligkeitsdatum, JJJJ-MM-TT. Alternativ payment.terms_days."
+    },
+    "currency": {
+      "type": "string",
+      "description": "Währung (ISO 4217). Standard EUR."
+    },
+    "buyer_reference": {
+      "type": "string",
+      "description": "Käuferreferenz. Bei Behörden die Leitweg-ID, sonst z. B. Bestellnummer oder Kundennummer. Für XRechnung Pflicht."
+    },
+    "order_reference": {
+      "type": "string",
+      "description": "Bestellnummer des Käufers."
+    },
+    "contract_reference": {
+      "type": "string",
+      "description": "Vertragsnummer."
+    },
+    "project_reference": {
+      "type": "string",
+      "description": "Projektnummer."
+    },
+    "preceding_invoice": {
+      "type": "object",
+      "description": "Bezug auf eine frühere Rechnung (bei Korrekturen).",
+      "properties": {
+        "number": {
+          "type": "string",
+          "description": "Nummer der früheren Rechnung."
+        },
+        "date": {
+          "type": "string",
+          "description": "Datum der früheren Rechnung."
+        }
+      }
+    },
+    "note": {
+      "type": [
+        "string",
+        "array"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Freitext auf der Rechnung."
+    },
+    "seller": {
+      "type": "object",
+      "description": "Verkäufer, also das eigene Unternehmen, das die Rechnung stellt.",
+      "required": [
+        "name",
+        "postcode",
+        "city"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Vollständiger Firmenname laut Register."
+        },
+        "street": {
+          "type": "string",
+          "description": "Straße und Hausnummer."
+        },
+        "additional_street": {
+          "type": "string",
+          "description": "Adresszusatz."
+        },
+        "postcode": {
+          "type": "string",
+          "description": "Postleitzahl."
+        },
+        "city": {
+          "type": "string",
+          "description": "Ort."
+        },
+        "country": {
+          "type": "string",
+          "description": "Land als ISO-Code, z. B. DE, AT, FR. Standard DE."
+        },
+        "vat_id": {
+          "type": "string",
+          "description": "USt-IdNr., z. B. DE123456789."
+        },
+        "tax_number": {
+          "type": "string",
+          "description": "Steuernummer des Finanzamts (wenn keine USt-IdNr. vorhanden ist)."
+        },
+        "register_id": {
+          "type": "string",
+          "description": "Handelsregister, z. B. \"HRB 12345, Amtsgericht Berlin\"."
+        },
+        "legal_info": {
+          "type": "string",
+          "description": "Weitere rechtliche Angaben, z. B. Geschäftsführer."
+        },
+        "trading_name": {
+          "type": "string",
+          "description": "Abweichender Handelsname."
+        },
+        "id": {
+          "type": "string",
+          "description": "Verkäuferkennung, z. B. Lieferantennummer beim Kunden."
+        },
+        "email": {
+          "type": "string",
+          "description": "Elektronische Adresse des Verkäufers für E-Rechnungen (XRechnung: Pflicht)."
+        },
+        "contact": {
+          "type": "object",
+          "description": "Ansprechpartner beim Verkäufer (XRechnung: Name, Telefon und E-Mail Pflicht).",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name des Ansprechpartners."
+            },
+            "phone": {
+              "type": "string",
+              "description": "Telefonnummer."
+            },
+            "email": {
+              "type": "string",
+              "description": "E-Mail-Adresse."
+            }
+          }
+        },
+        "small_business": {
+          "type": "boolean",
+          "description": "Kleinunternehmer nach § 19 UStG: keine Umsatzsteuer, alle Positionen werden steuerbefreit (Kategorie E) mit Hinweis ausgewiesen."
+        }
+      }
+    },
+    "buyer": {
+      "type": "object",
+      "description": "Käufer / Rechnungsempfänger.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name des Käufers."
+        },
+        "street": {
+          "type": "string",
+          "description": "Straße und Hausnummer."
+        },
+        "additional_street": {
+          "type": "string",
+          "description": "Adresszusatz."
+        },
+        "postcode": {
+          "type": "string",
+          "description": "Postleitzahl."
+        },
+        "city": {
+          "type": "string",
+          "description": "Ort."
+        },
+        "country": {
+          "type": "string",
+          "description": "Land als ISO-Code, z. B. DE, AT, FR. Standard DE."
+        },
+        "vat_id": {
+          "type": "string",
+          "description": "USt-IdNr. des Käufers (Pflicht bei Reverse Charge und innergemeinschaftlicher Lieferung)."
+        },
+        "register_id": {
+          "type": "string",
+          "description": "Registernummer des Käufers."
+        },
+        "id": {
+          "type": "string",
+          "description": "Kundennummer."
+        },
+        "trading_name": {
+          "type": "string",
+          "description": "Abweichender Handelsname."
+        },
+        "email": {
+          "type": "string",
+          "description": "Elektronische Adresse des Käufers für E-Rechnungen (XRechnung: Pflicht)."
+        },
+        "contact": {
+          "type": "object",
+          "description": "Ansprechpartner.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name des Ansprechpartners."
+            },
+            "phone": {
+              "type": "string",
+              "description": "Telefonnummer."
+            },
+            "email": {
+              "type": "string",
+              "description": "E-Mail-Adresse."
+            }
+          }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "description": "Abweichende Lieferanschrift.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name am Lieferort."
+        },
+        "street": {
+          "type": "string",
+          "description": "Straße und Hausnummer."
+        },
+        "additional_street": {
+          "type": "string",
+          "description": "Adresszusatz."
+        },
+        "postcode": {
+          "type": "string",
+          "description": "Postleitzahl."
+        },
+        "city": {
+          "type": "string",
+          "description": "Ort."
+        },
+        "country": {
+          "type": "string",
+          "description": "Land als ISO-Code, z. B. DE, AT, FR. Standard DE."
+        }
+      }
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "quantity",
+          "price"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Bezeichnung der Leistung oder des Artikels."
+          },
+          "description": {
+            "type": "string",
+            "description": "Beschreibung (optional)."
+          },
+          "quantity": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Menge. Negativ für Gutschrift-/Stornopositionen."
+          },
+          "unit": {
+            "type": "string",
+            "description": "Einheit als UN/ECE-Code, z. B. H87 = Stück, C62 = Einheit, HUR = Stunde, MIN = Minute, DAY = Tag, WEE = Woche, MON = Monat, ANN = Jahr, LS = Pauschale, SET = Satz, KGM = kg, GRM = g, TNE = t, MTR = m, KMT = km, MTK = m², MTQ = m³, LTR = l, KWH = kWh, XPK = Packung, XPP = Packstück, P1 = Prozent. Deutsche Kürzel wie Stk, Std, Tag, pauschal werden umgesetzt. Standard C62."
+          },
+          "price": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Einzelpreis netto (ohne Umsatzsteuer) je Einheit."
+          },
+          "price_basis_quantity": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Preisbasismenge, z. B. 100 wenn der Preis für 100 Stück gilt. Standard 1."
+          },
+          "vat_category": {
+            "type": "string",
+            "description": "USt-Kategorie: S Normal-/ermäßigter Satz (Standard), Z Nullsatz, E steuerbefreit, AE Reverse Charge (§ 13b UStG), K innergemeinschaftliche Lieferung, G Ausfuhr, O nicht steuerbar.",
+            "enum": [
+              "S",
+              "Z",
+              "E",
+              "AE",
+              "K",
+              "G",
+              "O"
+            ]
+          },
+          "vat_rate": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Steuersatz in Prozent, z. B. 19 oder 7. Standard 19 bei Kategorie S, sonst 0."
+          },
+          "item_id": {
+            "type": "string",
+            "description": "Artikelnummer des Verkäufers."
+          },
+          "buyer_item_id": {
+            "type": "string",
+            "description": "Artikelnummer des Käufers."
+          },
+          "order_line": {
+            "type": "string",
+            "description": "Positionsnummer in der Bestellung des Käufers."
+          },
+          "note": {
+            "type": "string",
+            "description": "Bemerkung zur Position."
+          },
+          "id": {
+            "type": "string",
+            "description": "Positionsnummer. Standard: fortlaufend 1, 2, 3 …"
+          },
+          "discount": {
+            "type": "object",
+            "description": "Rabatt auf diese Position (percent oder amount).",
+            "properties": {
+              "percent": {
+                "type": [
+                  "number",
+                  "string"
+                ],
+                "description": "Rabatt in Prozent."
+              },
+              "amount": {
+                "type": [
+                  "number",
+                  "string"
+                ],
+                "description": "Rabatt als Betrag netto."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Grund, z. B. \"Mengenrabatt\". Standard \"Rabatt\"."
+              }
+            }
+          },
+          "surcharge": {
+            "type": "object",
+            "description": "Zuschlag auf diese Position.",
+            "properties": {
+              "amount": {
+                "type": [
+                  "number",
+                  "string"
+                ],
+                "description": "Zuschlag als Betrag netto."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Grund, z. B. \"Expresszuschlag\". Standard \"Zuschlag\"."
+              }
+            }
+          }
+        }
+      },
+      "description": "Rechnungspositionen."
+    },
+    "allowances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "amount": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Betrag netto."
+          },
+          "percent": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Alternativ Prozentsatz auf die Positionen mit gleicher USt."
+          },
+          "base": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Grundbetrag für percent (optional)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Grund, z. B. \"Versandkosten\" oder \"Treuerabatt\"."
+          },
+          "vat_category": {
+            "type": "string",
+            "description": "USt-Kategorie: S Normal-/ermäßigter Satz (Standard), Z Nullsatz, E steuerbefreit, AE Reverse Charge (§ 13b UStG), K innergemeinschaftliche Lieferung, G Ausfuhr, O nicht steuerbar.",
+            "enum": [
+              "S",
+              "Z",
+              "E",
+              "AE",
+              "K",
+              "G",
+              "O"
+            ]
+          },
+          "vat_rate": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Steuersatz in Prozent, z. B. 19 oder 7. Standard 19 bei Kategorie S, sonst 0."
+          }
+        }
+      },
+      "description": "Nachlässe auf die ganze Rechnung."
+    },
+    "charges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "amount": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Betrag netto."
+          },
+          "percent": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Alternativ Prozentsatz auf die Positionen mit gleicher USt."
+          },
+          "base": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Grundbetrag für percent (optional)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Grund, z. B. \"Versandkosten\" oder \"Treuerabatt\"."
+          },
+          "vat_category": {
+            "type": "string",
+            "description": "USt-Kategorie: S Normal-/ermäßigter Satz (Standard), Z Nullsatz, E steuerbefreit, AE Reverse Charge (§ 13b UStG), K innergemeinschaftliche Lieferung, G Ausfuhr, O nicht steuerbar.",
+            "enum": [
+              "S",
+              "Z",
+              "E",
+              "AE",
+              "K",
+              "G",
+              "O"
+            ]
+          },
+          "vat_rate": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Steuersatz in Prozent, z. B. 19 oder 7. Standard 19 bei Kategorie S, sonst 0."
+          }
+        }
+      },
+      "description": "Zuschläge auf die ganze Rechnung, z. B. Versand."
+    },
+    "vat_exemption_reason": {
+      "type": "string",
+      "description": "Befreiungsgrund für steuerfreie Umsätze, z. B. \"Steuerfrei nach § 4 Nr. 14 UStG\". Für AE, K, G, O und Kleinunternehmer gibt es einen Standardtext."
+    },
+    "payment": {
+      "type": "object",
+      "description": "Zahlungsangaben.",
+      "properties": {
+        "means": {
+          "type": "string",
+          "description": "Zahlungsart: 58 SEPA-Überweisung, 30 Überweisung (nicht SEPA), 59 SEPA-Lastschrift, 10 Barzahlung, 1 Nicht definiert, 97 Verrechnung, ZZZ Sonstige. Standard 58.",
+          "enum": [
+            "58",
+            "30",
+            "59",
+            "10",
+            "1",
+            "97",
+            "ZZZ"
+          ]
+        },
+        "iban": {
+          "type": "string",
+          "description": "IBAN des Verkäufers (bei Überweisung Pflicht)."
+        },
+        "bic": {
+          "type": "string",
+          "description": "BIC (optional)."
+        },
+        "account_name": {
+          "type": "string",
+          "description": "Kontoinhaber. Standard: Name des Verkäufers."
+        },
+        "reference": {
+          "type": "string",
+          "description": "Verwendungszweck. Standard: Rechnungsnummer."
+        },
+        "terms": {
+          "type": "string",
+          "description": "Zahlungsbedingungen als Text. Ohne Angabe wird \"Zahlbar ohne Abzug bis …\" erzeugt."
+        },
+        "terms_days": {
+          "type": "integer",
+          "description": "Zahlungsziel in Tagen ab Rechnungsdatum."
+        },
+        "discount": {
+          "type": "object",
+          "description": "Skonto.",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "description": "Tage."
+            },
+            "percent": {
+              "type": [
+                "number",
+                "string"
+              ],
+              "description": "Prozent."
+            }
+          }
+        },
+        "mandate_id": {
+          "type": "string",
+          "description": "SEPA-Mandatsreferenz (bei Lastschrift)."
+        },
+        "creditor_id": {
+          "type": "string",
+          "description": "Gläubiger-ID des Verkäufers (bei Lastschrift)."
+        },
+        "debtor_iban": {
+          "type": "string",
+          "description": "IBAN des Käufers (bei Lastschrift)."
+        }
+      }
+    },
+    "prepaid": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "description": "Bereits gezahlter Betrag (Anzahlung), wird vom Zahlbetrag abgezogen."
+    }
+  }
+}
