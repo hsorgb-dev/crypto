@@ -1,0 +1,431 @@
+//@version=6
+// ═════════════════════════════════════════════════════════════════════════════
+// MGC1! · 5m · Opening-range breakout 01:00–01:15 New York, with a regime layer
+// ─────────────────────────────────────────────────────────────────────────────
+// ORB      High/low of the bars opening 01:00–01:15 NY (01:00, 01:05, 01:10).
+// Entry    A 5m close beyond the ORB → market order, filled at the next bar's
+//          open. Signal bars 01:15–03:40 NY, so fills happen 01:20–03:40.
+// Stop     Opposite side of the ORB (optional buffer in ticks, default 0).
+// Target   0.5 R, R = |entry − stop|. Placed from the signal close, then
+//          re-anchored to the actual fill once the order has filled.
+// Size     floor($350 / (stop distance × $10 per point)), at most 20 contracts.
+//          The stop distance is measured from the signal close.
+// Per day  Max 2 trades, one long and one short. The 2nd trade comes only after
+//          the 1st hit its SL or TP, or as a reversal on an opposite breakout.
+// Flat     Anything still open is closed at 06:00 NY.
+// Regime   6 toggleable, direction-aware filters (trend strength, breakout
+//          extension, volatility, volume, candle quality, VWAP), combined as
+//          ALL / N-of-M / weighted score. A breakout the layer rejects latches
+//          its direction for the rest of the day.
+// All times use the Timezone input (America/New_York), whatever the chart shows.
+// ═════════════════════════════════════════════════════════════════════════════
+strategy("MGC1! ORB 01:00 NY + Regime", shorttitle = "MGC ORB", overlay = true,
+     initial_capital = 25000, currency = currency.USD, pyramiding = 0,
+     default_qty_type = strategy.fixed, default_qty_value = 1,
+     commission_type = strategy.commission.cash_per_contract, commission_value = 0, slippage = 0,
+     margin_long = 0, margin_short = 0, process_orders_on_close = false,
+     max_lines_count = 500, max_boxes_count = 500, max_labels_count = 500)
+
+// ── Inputs ───────────────────────────────────────────────────────────────────
+const string G_SES = "Sessions (NY time)"
+const string G_TRD = "Trade"
+const string G_RGM = "Regime layer"
+const string G_F1  = "① Trend strength (ADX / DMI)"
+const string G_F2  = "② Breakout extension"
+const string G_F3  = "③ Volatility"
+const string G_F4  = "④ Volume"
+const string G_F5  = "⑤ Candle quality"
+const string G_F6  = "⑥ VWAP"
+const string G_VIS = "Display"
+
+string tz      = input.string("America/New_York", "Timezone", group = G_SES)
+string orbSess = input.session("0100-0115", "Opening range", group = G_SES)
+string winSess = input.session("0115-0340", "Entry window (signal bars)", group = G_SES, tooltip = "The breakout bar must open inside this window; its order fills at the next bar's open. 0115-0340 gives fills from 01:20 to 03:40.")
+int    fcHour  = input.int(6, "Force close at", minval = 0, maxval = 23, inline = "fc", group = G_SES)
+int    fcMin   = input.int(0, ":", minval = 0, maxval = 59, inline = "fc", group = G_SES)
+
+float riskUsd   = input.float(350, "Risk per trade ($)", minval = 1, group = G_TRD)
+float pointVal  = input.float(10, "Point value ($ per point)", minval = 0.01, group = G_TRD, tooltip = "MGC is 10 troy oz: $10 per $1 move.")
+int   maxQty    = input.int(20, "Max contracts", minval = 1, group = G_TRD)
+float tpR       = input.float(0.5, "Target (R)", minval = 0.05, step = 0.05, group = G_TRD)
+int   stopBuf   = input.int(0, "Stop buffer beyond the ORB (ticks)", minval = 0, group = G_TRD)
+int   maxTrades = input.int(2, "Max trades per day", minval = 1, maxval = 2, group = G_TRD, tooltip = "One per direction, so 2 at most.")
+bool  reverseOn = input.bool(true, "Reverse on an opposite breakout", group = G_TRD)
+bool  refineTp  = input.bool(true, "Re-anchor the target to the actual fill", group = G_TRD)
+
+string cmbMode  = input.string("N-of-M", "Combine filters as", options = ["ALL", "N-of-M", "Weighted score"], group = G_RGM)
+int    nReq     = input.int(4, "N (for N-of-M)", minval = 1, maxval = 6, group = G_RGM, tooltip = "A breakout passes when at least N of the M enabled filters pass. If N is larger than M, all of them must pass.")
+float  scoreMin = input.float(60, "Min score % (for weighted)", minval = 0, maxval = 100, step = 5, group = G_RGM, tooltip = "Score = weight of the passing filters / weight of all enabled filters.")
+bool   latchOn  = input.bool(true, "Latch rejections for the day", group = G_RGM, tooltip = "Once a breakout is rejected, that direction stays blocked until the next day.")
+int    atrLen   = input.int(14, "ATR length (extension, volatility)", minval = 1, group = G_RGM)
+
+bool  f1On    = input.bool(true, "Enable", inline = "f1", group = G_F1)
+float f1W     = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f1", group = G_F1)
+int   diLen   = input.int(14, "DI length", minval = 1, group = G_F1)
+int   adxSm   = input.int(14, "ADX smoothing", minval = 1, group = G_F1)
+float adxMin  = input.float(20, "Min ADX", minval = 0, group = G_F1)
+bool  diAlign = input.bool(true, "+DI / −DI must point in the trade direction", group = G_F1)
+
+bool  f2On    = input.bool(true, "Enable", inline = "f2", group = G_F2)
+float f2W     = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f2", group = G_F2)
+float extMin  = input.float(0, "Min close beyond the ORB (ATR)", minval = 0, step = 0.05, group = G_F2)
+float extMax  = input.float(1, "Max close beyond the ORB (ATR)", minval = 0, step = 0.05, group = G_F2, tooltip = "Rejects breakouts that already ran too far from the ORB edge.")
+
+bool  f3On    = input.bool(true, "Enable", inline = "f3", group = G_F3)
+float f3W     = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f3", group = G_F3)
+int   volBase = input.int(100, "Baseline length (SMA of ATR)", minval = 1, group = G_F3)
+float volLo   = input.float(0.8, "Min ATR / baseline", minval = 0, step = 0.05, group = G_F3)
+float volHi   = input.float(2.5, "Max ATR / baseline", minval = 0, step = 0.05, group = G_F3, tooltip = "Volatility has no direction, so it passes or fails both sides alike.")
+
+bool  f4On    = input.bool(true, "Enable", inline = "f4", group = G_F4)
+float f4W     = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f4", group = G_F4)
+int   rvolLen = input.int(20, "Volume average length", minval = 1, group = G_F4)
+float rvolMin = input.float(1.2, "Min relative volume of the breakout bar", minval = 0, step = 0.1, group = G_F4)
+bool  netOn   = input.bool(true, "Net volume must agree with the direction", group = G_F4, tooltip = "Volume of up bars minus volume of down bars over the lookback: above 0 for longs, below 0 for shorts.")
+int   netLen  = input.int(12, "Net volume lookback (bars)", minval = 1, group = G_F4)
+
+bool  f5On    = input.bool(true, "Enable", inline = "f5", group = G_F5)
+float f5W     = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f5", group = G_F5)
+float bodyMin = input.float(50, "Min body (% of range)", minval = 0, maxval = 100, group = G_F5)
+float clvMin  = input.float(60, "Min close location (% toward the breakout side)", minval = 0, maxval = 100, group = G_F5, tooltip = "100 = closed at the high (long) or at the low (short). The bar must also close in the trade direction.")
+
+bool   f6On   = input.bool(true, "Enable", inline = "f6", group = G_F6)
+float  f6W    = input.float(1, "Weight", minval = 0, step = 0.5, inline = "f6", group = G_F6)
+string vwAnch = input.string("Exchange session", "Anchor", options = ["Exchange session", "NY day", "ORB start"], group = G_F6, tooltip = "Long needs close above VWAP, short below.")
+
+bool   showOrb = input.bool(true, "ORB lines", group = G_VIS)
+color  orbCol  = input.color(#f7a600, "ORB colour", group = G_VIS)
+bool   showRR  = input.bool(true, "Risk/reward boxes", group = G_VIS)
+bool   showRej = input.bool(true, "Markers for rejected breakouts", group = G_VIS)
+bool   showBg  = input.bool(true, "Shade the ORB and entry window", group = G_VIS)
+bool   showVw  = input.bool(false, "Plot VWAP", group = G_VIS)
+bool   showTbl = input.bool(true, "Filter status table", group = G_VIS)
+string tblPosI = input.string("Top right", "Table position", options = ["Top right", "Bottom right", "Top left", "Bottom left"], group = G_VIS)
+
+color C_OK  = #26a69a
+color C_BAD = #ef5350
+color C_DIM = #787b86
+color C_TXT = #d1d4dc
+
+// ── Clock ────────────────────────────────────────────────────────────────────
+int    dayKey  = year(time, tz) * 10000 + month(time, tz) * 100 + dayofmonth(time, tz)
+bool   newDay  = na(dayKey[1]) or dayKey != dayKey[1]
+bool   inOrb   = not na(time(timeframe.period, orbSess, tz))
+bool   inWin   = not na(time(timeframe.period, winSess, tz))
+bool   orbOpen = inOrb and not inOrb[1]
+int    fcTime  = timestamp(tz, year(time, tz), month(time, tz), dayofmonth(time, tz), fcHour, fcMin, 0)
+bool   pastFc  = time_close >= fcTime
+string fcTxt   = (fcHour < 10 ? "0" : "") + str.tostring(fcHour) + ":" + (fcMin < 10 ? "0" : "") + str.tostring(fcMin)
+
+// ── Daily state ──────────────────────────────────────────────────────────────
+var float  orbH     = na
+var float  orbL     = na
+var int    orbT0    = na        // open time of the first ORB bar
+var int    orbT1    = na        // open time of the first bar after the ORB
+var int    nTrades  = 0
+var bool   tookL    = false
+var bool   tookS    = false
+var bool   latchL   = false
+var bool   latchS   = false
+var bool   lastSlTp = false     // the last trade closed today hit its SL or TP
+var string decL     = "—"
+var string decS     = "—"
+var int    seen     = 0         // closed trades already booked
+var string lastExit = "—"
+
+// Book the trade closed since the previous bar. Exits of the SL/TP bracket carry
+// its id; a reversal carries the id of the opposite entry; the rest is 06:00.
+if strategy.closedtrades > seen
+    int    k   = strategy.closedtrades - 1
+    string xid = strategy.closedtrades.exit_id(k)
+    float  pnl = strategy.closedtrades.profit(k)
+    lastSlTp := xid == "L-exit" or xid == "S-exit"
+    lastExit := (lastSlTp ? (pnl >= 0 ? "TP" : "SL") : xid == "Long" or xid == "Short" ? "Reversed" : "Flat " + fcTxt) + "  " + (pnl >= 0 ? "+" : "") + str.tostring(math.round(pnl)) + " $"
+    seen     := strategy.closedtrades
+
+if newDay
+    orbH     := na
+    orbL     := na
+    orbT0    := na
+    orbT1    := na
+    nTrades  := 0
+    tookL    := false
+    tookS    := false
+    latchL   := false
+    latchS   := false
+    lastSlTp := false
+    decL     := "—"
+    decS     := "—"
+
+// ── Opening range ────────────────────────────────────────────────────────────
+if inOrb
+    orbH := na(orbH) ? high : math.max(orbH, high)
+    orbL := na(orbL) ? low : math.min(orbL, low)
+    if na(orbT0)
+        orbT0 := time
+bool orbReady = not na(orbH) and not inOrb
+
+// Draw the range once, on the first bar after it is complete.
+if orbReady and na(orbT1)
+    orbT1 := time
+    if showOrb
+        line.new(orbT0, orbH, fcTime, orbH, xloc = xloc.bar_time, color = orbCol, width = 2)
+        line.new(orbT0, orbL, fcTime, orbL, xloc = xloc.bar_time, color = orbCol, width = 2)
+        box.new(orbT0, orbH, orbT1, orbL, xloc = xloc.bar_time, border_width = 0, bgcolor = color.new(orbCol, 85))
+        label.new(fcTime, orbH, "ORB H " + str.tostring(orbH, format.mintick), xloc = xloc.bar_time, style = label.style_label_left, color = #00000000, textcolor = orbCol, size = size.small)
+        label.new(fcTime, orbL, "ORB L " + str.tostring(orbL, format.mintick), xloc = xloc.bar_time, style = label.style_label_left, color = #00000000, textcolor = orbCol, size = size.small)
+
+// ── Regime filters (evaluated on every bar, used on breakout bars) ───────────
+[diP, diM, adxV] = ta.dmi(diLen, adxSm)
+float atrV    = ta.atr(atrLen)
+float atrBase = ta.sma(atrV, volBase)
+float atrRat  = atrBase > 0 ? atrV / atrBase : na
+float volAvg  = ta.sma(volume, rvolLen)
+float rvol    = volAvg > 0 ? volume / volAvg : na
+float netVol  = math.sum(close > open ? volume : close < open ? -volume : 0.0, netLen)
+bool  sesNew  = timeframe.change("D")
+float vwapV   = ta.vwap(hlc3, vwAnch == "Exchange session" ? sesNew : vwAnch == "NY day" ? newDay : orbOpen)
+
+float rng  = high - low
+float extL = orbReady and atrV > 0 ? (close - orbH) / atrV : na
+float extS = orbReady and atrV > 0 ? (orbL - close) / atrV : na
+float body = rng > 0 ? 100 * math.abs(close - open) / rng : 0.0
+float clvL = rng > 0 ? 100 * (close - low) / rng : 0.0
+float clvS = rng > 0 ? 100 * (high - close) / rng : 0.0
+
+// ① trend strength: ADX high enough, DI pointing the trade's way
+bool trendOk = not na(adxV) and adxV >= adxMin
+bool p1L = trendOk and (not diAlign or diP > diM)
+bool p1S = trendOk and (not diAlign or diM > diP)
+// ② breakout extension: close beyond the ORB edge, measured in ATR
+bool p2L = not na(extL) and extL >= extMin and extL <= extMax
+bool p2S = not na(extS) and extS >= extMin and extS <= extMax
+// ③ volatility: ATR against its own baseline (same for both sides)
+bool p3 = not na(atrRat) and atrRat >= volLo and atrRat <= volHi
+// ④ volume: relative volume of the breakout bar, net volume in the trade's favour
+bool volOk = not na(rvol) and rvol >= rvolMin
+bool p4L = volOk and (not netOn or netVol > 0)
+bool p4S = volOk and (not netOn or netVol < 0)
+// ⑤ candle quality: body share and close location toward the breakout side
+bool p5L = close > open and body >= bodyMin and clvL >= clvMin
+bool p5S = close < open and body >= bodyMin and clvS >= clvMin
+// ⑥ VWAP: price on the trade's side of VWAP
+bool p6L = not na(vwapV) and close > vwapV
+bool p6S = not na(vwapV) and close < vwapV
+
+// Returns [passes, passing filters, enabled filters, weighted score %].
+// With no filter enabled the layer is off and everything passes.
+regime(array<bool> res, array<bool> ena, array<float> wts) =>
+    int   m    = 0
+    int   n    = 0
+    float wAll = 0.0
+    float wOk  = 0.0
+    for i = 0 to array.size(res) - 1
+        if array.get(ena, i)
+            m    += 1
+            wAll += array.get(wts, i)
+            if array.get(res, i)
+                n   += 1
+                wOk += array.get(wts, i)
+    float score = wAll > 0 ? 100 * wOk / wAll : 100.0
+    bool  ok    = m == 0 or (cmbMode == "ALL" ? n == m : cmbMode == "N-of-M" ? n >= math.min(nReq, m) : score >= scoreMin)
+    [ok, n, m, score]
+
+array<bool>  ena = array.from(f1On, f2On, f3On, f4On, f5On, f6On)
+array<float> wts = array.from(f1W, f2W, f3W, f4W, f5W, f6W)
+[okL, nL, mL, scL] = regime(array.from(p1L, p2L, p3, p4L, p5L, p6L), ena, wts)
+[okS, nS, mS, scS] = regime(array.from(p1S, p2S, p3, p4S, p5S, p6S), ena, wts)
+
+// ── Text helpers ─────────────────────────────────────────────────────────────
+mark(bool en, bool p) => not en ? "·" : p ? "✔" : "✖"
+markCol(bool en, bool p) => not en ? C_DIM : p ? C_OK : C_BAD
+fmt(float x, string f) => na(x) ? "n/a" : str.tostring(x, f)
+scoreTxt(int n, int m, float sc) => cmbMode == "Weighted score" ? str.tostring(sc, "#") + "%" : str.tostring(n) + "/" + str.tostring(m)
+
+// Filter-by-filter breakdown for one side, shown as a marker tooltip.
+why(bool isL) =>
+    string s = "Trend " + mark(f1On, isL ? p1L : p1S) + "  ADX " + fmt(adxV, "#.#") + "  +DI " + fmt(diP, "#.#") + "  −DI " + fmt(diM, "#.#")
+    s := s + "\nExtension " + mark(f2On, isL ? p2L : p2S) + "  " + fmt(isL ? extL : extS, "#.##") + " ATR"
+    s := s + "\nVolatility " + mark(f3On, p3) + "  ATR/baseline " + fmt(atrRat, "#.##")
+    s := s + "\nVolume " + mark(f4On, isL ? p4L : p4S) + "  RVOL " + fmt(rvol, "#.##") + "  net " + (netVol > 0 ? "+" : netVol < 0 ? "−" : "0")
+    s := s + "\nCandle " + mark(f5On, isL ? p5L : p5S) + "  body " + fmt(body, "#") + "%  close " + fmt(isL ? clvL : clvS, "#") + "%"
+    s := s + "\nVWAP " + mark(f6On, isL ? p6L : p6S) + "  " + fmt(vwapV, format.mintick)
+    s
+
+// ── Open trade: risk/reward boxes and target refinement ──────────────────────
+var int   pDir   = 0       // direction of the trade drawn last
+var int   pFill  = na      // bar index of its fill (next bar after the signal)
+var float pStop  = na
+var float pTgt   = na
+var int   pQty   = 0
+var bool  pLive  = false
+var box   bxRisk = na
+var box   bxRew  = na
+
+paintRR(box rk, box rw, float entry, float stp, float tgt, int qty) =>
+    box.set_top(rk, math.max(entry, stp))
+    box.set_bottom(rk, math.min(entry, stp))
+    box.set_text(rk, "SL " + str.tostring(stp, format.mintick) + " · " + str.tostring(qty) + "c · −$" + str.tostring(math.round(math.abs(entry - stp) * qty * pointVal)))
+    box.set_top(rw, math.max(entry, tgt))
+    box.set_bottom(rw, math.min(entry, tgt))
+    box.set_text(rw, "TP " + str.tostring(tgt, format.mintick) + " · +$" + str.tostring(math.round(math.abs(tgt - entry) * qty * pointVal)))
+
+float posSz  = strategy.position_size
+int   posDir = posSz > 0 ? 1 : posSz < 0 ? -1 : 0
+
+if pLive and bar_index >= pFill
+    // The market order filled at this bar's open: move the target to 0.5 R of
+    // the real fill. The bracket placed on the signal bar covered this bar.
+    if bar_index == pFill and posDir == pDir
+        float fillPx = strategy.position_avg_price
+        float r      = pDir * (fillPx - pStop)
+        if refineTp and r > 0
+            pTgt := fillPx + pDir * tpR * r
+            strategy.exit(pDir == 1 ? "L-exit" : "S-exit", pDir == 1 ? "Long" : "Short", stop = pStop, limit = pTgt, comment_loss = "SL", comment_profit = "TP")
+        if showRR
+            paintRR(bxRisk, bxRew, fillPx, pStop, pTgt, pQty)
+    if posDir == pDir
+        if showRR
+            box.set_right(bxRisk, bar_index + 1)
+            box.set_right(bxRew, bar_index + 1)
+    else
+        if showRR
+            box.set_right(bxRisk, math.max(bar_index, pFill + 1))
+            box.set_right(bxRew, math.max(bar_index, pFill + 1))
+        pLive := false
+
+// ── Force close ──────────────────────────────────────────────────────────────
+if pastFc and posDir != 0
+    strategy.close_all(comment = "Flat " + fcTxt, immediately = true)
+    if pLive
+        if showRR
+            box.set_right(bxRisk, bar_index)
+            box.set_right(bxRew, bar_index)
+        pLive := false
+
+// ── Breakout entries ─────────────────────────────────────────────────────────
+// A new trade needs a free slot for its direction and either a flat book after
+// an SL/TP exit (or no trade yet today), or an open opposite trade to reverse.
+// With the stop on the ORB edge (buffer 0) an opposite close always means that
+// stop already filled on the same bar, so a reversal is stop-out + new entry.
+bool canTrade = orbReady and inWin and not pastFc and nTrades < maxTrades
+bool prevOk   = nTrades == 0 or lastSlTp
+bool goL      = canTrade and close > orbH and not tookL and not latchL and ((posDir == 0 and prevOk) or (reverseOn and posDir == -1))
+bool goS      = canTrade and close < orbL and not tookS and not latchS and ((posDir == 0 and prevOk) or (reverseOn and posDir == 1))
+int  sig      = goL ? 1 : goS ? -1 : 0
+
+if sig != 0
+    bool   isL = sig == 1
+    string hm  = str.format_time(time_close, "HH:mm", tz)
+    string sc  = isL ? scoreTxt(nL, mL, scL) : scoreTxt(nS, mS, scS)
+    if isL ? okL : okS
+        float stp  = isL ? orbL - stopBuf * syminfo.mintick : orbH + stopBuf * syminfo.mintick
+        float risk = sig * (close - stp)
+        int   qty  = math.min(maxQty, math.floor(riskUsd / (risk * pointVal)))
+        if qty >= 1
+            float  tgt = close + sig * tpR * risk
+            string eid = isL ? "Long" : "Short"
+            string dec = "TAKEN " + hm + (posDir != 0 ? " rev" : "")
+            strategy.entry(eid, isL ? strategy.long : strategy.short, qty = qty, comment = (isL ? "L " : "S ") + str.tostring(qty) + " · " + sc)
+            strategy.exit(isL ? "L-exit" : "S-exit", eid, stop = stp, limit = tgt, comment_loss = "SL", comment_profit = "TP")
+            nTrades += 1
+            if isL
+                tookL := true
+                decL  := dec
+            else
+                tookS := true
+                decS  := dec
+            // A reversed trade closes at the next open, where the new one starts.
+            if pLive and showRR
+                box.set_right(bxRisk, bar_index + 1)
+                box.set_right(bxRew, bar_index + 1)
+            pDir  := sig
+            pFill := bar_index + 1
+            pStop := stp
+            pTgt  := tgt
+            pQty  := qty
+            pLive := true
+            if showRR
+                bxRisk := box.new(bar_index + 1, math.max(close, stp), bar_index + 2, math.min(close, stp), border_color = color.new(C_BAD, 40), bgcolor = color.new(C_BAD, 85), text_color = C_BAD, text_size = size.small, text_halign = text.align_left)
+                bxRew  := box.new(bar_index + 1, math.max(close, tgt), bar_index + 2, math.min(close, tgt), border_color = color.new(C_OK, 40), bgcolor = color.new(C_OK, 85), text_color = C_OK, text_size = size.small, text_halign = text.align_left)
+                paintRR(bxRisk, bxRew, close, stp, tgt, qty)
+        else
+            if isL
+                decL := "SKIP size 0 " + hm
+            else
+                decS := "SKIP size 0 " + hm
+    else
+        string dec = (latchOn ? "LATCHED " : "REJECTED ") + hm + " " + sc
+        if isL
+            latchL := latchOn
+            decL   := dec
+        else
+            latchS := latchOn
+            decS   := dec
+        if showRej
+            label.new(bar_index, isL ? high : low, "✖", style = isL ? label.style_label_down : label.style_label_up, color = color.new(C_DIM, 20), textcolor = color.white, size = size.tiny, tooltip = (isL ? "Long" : "Short") + " breakout rejected " + hm + " (" + sc + ")\n" + why(isL))
+
+// ── Chart visuals ────────────────────────────────────────────────────────────
+bgcolor(showBg and inOrb ? color.new(orbCol, 88) : na, title = "ORB window")
+bgcolor(showBg and inWin ? color.new(#2962ff, 94) : na, title = "Entry window")
+plot(showVw ? vwapV : na, "VWAP", color = #ff9800)
+
+// ── Filter status table ──────────────────────────────────────────────────────
+string tblPos = switch tblPosI
+    "Top right"    => position.top_right
+    "Bottom right" => position.bottom_right
+    "Top left"     => position.top_left
+    => position.bottom_left
+var table tbl = table.new(tblPos, 5, 14, bgcolor = color.new(#131722, 10), frame_color = color.new(C_DIM, 40), frame_width = 1, border_color = color.new(C_DIM, 70), border_width = 1)
+
+tc(int c, int r, string s, color fg) =>
+    table.cell(tbl, c, r, s, text_color = fg, text_size = size.small, text_halign = c == 0 ? text.align_left : text.align_center)
+
+filterRow(int r, string name, bool en, bool pl, bool ps, float w, string val) =>
+    tc(0, r, name, en ? C_TXT : C_DIM)
+    tc(1, r, en ? val : "off", C_DIM)
+    tc(2, r, mark(en, pl), markCol(en, pl))
+    tc(3, r, mark(en, ps), markCol(en, ps))
+    tc(4, r, str.tostring(w, "#.#"), C_DIM)
+
+decCol(string d) => str.startswith(d, "TAKEN") ? C_OK : str.startswith(d, "LATCHED") or str.startswith(d, "REJECTED") ? C_BAD : C_DIM
+
+if barstate.islast and showTbl
+    string modeTxt = cmbMode == "ALL" ? "ALL" : cmbMode == "N-of-M" ? str.tostring(math.min(nReq, mL)) + " of " + str.tostring(mL) : "score ≥ " + str.tostring(scoreMin, "#") + "%"
+    tc(0, 0, "Regime · " + modeTxt, C_TXT)
+    tc(1, 0, "live bar", C_DIM)
+    tc(2, 0, "Long", C_TXT)
+    tc(3, 0, "Short", C_TXT)
+    tc(4, 0, "w", C_DIM)
+    filterRow(1, "① Trend", f1On, p1L, p1S, f1W, "ADX " + fmt(adxV, "#.#") + " · DI " + fmt(diP, "#") + "/" + fmt(diM, "#"))
+    filterRow(2, "② Extension", f2On, p2L, p2S, f2W, fmt(extL, "#.##") + " / " + fmt(extS, "#.##") + " ATR")
+    filterRow(3, "③ Volatility", f3On, p3, p3, f3W, "ATR/base " + fmt(atrRat, "#.##"))
+    filterRow(4, "④ Volume", f4On, p4L, p4S, f4W, "RVOL " + fmt(rvol, "#.##") + " · net " + (netVol > 0 ? "+" : netVol < 0 ? "−" : "0"))
+    filterRow(5, "⑤ Candle", f5On, p5L, p5S, f5W, "body " + fmt(body, "#") + "% · close " + fmt(clvL, "#") + "/" + fmt(clvS, "#"))
+    filterRow(6, "⑥ VWAP", f6On, p6L, p6S, f6W, fmt(vwapV, format.mintick))
+    tc(0, 7, "Regime result", C_TXT)
+    tc(1, 7, "", C_DIM)
+    tc(2, 7, (okL ? "PASS " : "FAIL ") + scoreTxt(nL, mL, scL), okL ? C_OK : C_BAD)
+    tc(3, 7, (okS ? "PASS " : "FAIL ") + scoreTxt(nS, mS, scS), okS ? C_OK : C_BAD)
+    tc(4, 7, "", C_DIM)
+    tc(0, 8, "Today", C_TXT)
+    tc(1, 8, "trades " + str.tostring(nTrades) + "/" + str.tostring(maxTrades), C_DIM)
+    tc(2, 8, decL, decCol(decL))
+    tc(3, 8, decS, decCol(decS))
+    tc(4, 8, "", C_DIM)
+    tc(0, 9, "ORB", C_TXT)
+    tc(1, 9, orbReady ? "range " + str.tostring(orbH - orbL, format.mintick) : inOrb ? "building" : "—", C_DIM)
+    tc(2, 9, "H " + fmt(orbH, format.mintick), C_DIM)
+    tc(3, 9, "L " + fmt(orbL, format.mintick), C_DIM)
+    tc(4, 9, "", C_DIM)
+    tc(0, 10, "Position", C_TXT)
+    tc(1, 10, posDir == 0 ? "flat" : (posDir > 0 ? "long " : "short ") + str.tostring(math.abs(posSz)) + " @ " + str.tostring(strategy.position_avg_price, format.mintick), posDir > 0 ? C_OK : posDir < 0 ? C_BAD : C_DIM)
+    tc(2, 10, pLive ? "SL " + fmt(pStop, format.mintick) : "", C_DIM)
+    tc(3, 10, pLive ? "TP " + fmt(pTgt, format.mintick) : "", C_DIM)
+    tc(4, 10, "", C_DIM)
+    tc(0, 11, "Last exit", C_TXT)
+    tc(1, 11, lastExit, C_DIM)
+    tc(0, 12, "Sessions", C_TXT)
+    tc(1, 12, "ORB " + orbSess + " · entries " + winSess + " · flat " + fcTxt, C_DIM)
+    string warn = (timeframe.period != "5" ? "⚠ built for the 5m chart  " : "") + (syminfo.pointvalue != pointVal ? "⚠ symbol point value is " + str.tostring(syminfo.pointvalue) : "")
+    tc(0, 13, warn, C_BAD)
