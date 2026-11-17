@@ -13,7 +13,6 @@ Krypto-Paper-Trading-Bot (Trendfolge) als Google-Colab-Notebook. Er handelt nur 
 | `TRADING_BOT_V4_0.ipynb` | Vorgängerversion V4.0 als Referenz, unverändert. |
 | `tools/notebook_modules.py` | Holt die `%%writefile`-Module aus dem Notebook heraus und schreibt sie wieder zurück. |
 | `tests/` | pytest-Tests gegen die Module genau so, wie das Notebook sie schreibt. Sie laufen offline, Kraken und Alpaca werden dabei simuliert. |
-| `e_rechnung/` | **Unabhängiges Zusatzprojekt:** E-Rechnungen (XRechnung 3.0 UBL/CII, ZUGFeRD/Factur-X) aus JSON erzeugen und prüfen, mit Anbindung an KI-Werkzeuge (Tool-Definition, MCP-Server, HTTP-API). Details in `e_rechnung/README.md`. |
 
 ## Tests
 
