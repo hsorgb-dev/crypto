@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erechnung"
+version = "1.0.0"
+description = "E-Rechnungen (XRechnung 3.0 UBL/CII, ZUGFeRD/Factur-X EN 16931) aus JSON erzeugen und prüfen"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["reportlab>=4", "factur-x>=3", "pypdf>=4", "pillow>=10"]
+pruefen = ["lxml>=5", "saxonche>=12"]
+test = ["pytest>=8"]
+
+[project.scripts]
+erechnung = "erechnung.__main__:main"
+
+[tool.setuptools]
+packages = ["erechnung"]

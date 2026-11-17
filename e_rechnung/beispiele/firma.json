@@ -1,0 +1,19 @@
+{
+  "seller": {
+    "name": "Muster Technik GmbH",
+    "address": {"street": "Hauptstraße 12", "postal_code": "10115", "city": "Berlin", "country_code": "DE"},
+    "vat_id": "DE123456789",
+    "tax_number": "30/123/45678",
+    "registration_id": "HRB 123456 B, Amtsgericht Charlottenburg",
+    "legal_info": "Geschäftsführerin: Erika Muster",
+    "contact": {"name": "Buchhaltung", "phone": "+49 30 1234567", "email": "buchhaltung@muster-technik.example"},
+    "electronic_address": "rechnungen@muster-technik.example"
+  },
+  "payment": {
+    "means_code": "58",
+    "iban": "DE02120300000000202051",
+    "bic": "BYLADEM1001",
+    "account_name": "Muster Technik GmbH"
+  },
+  "payment_days": 14
+}
